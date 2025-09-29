@@ -14,8 +14,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call([
+            FerreteriaPermissionSeeder::class,
+            FerreteriaRoleSeeder::class,
+            FerreteriaDataSeeder::class,
+        ]);
 
+        // Crear usuario de prueba adicional
         User::firstOrCreate(
             ['email' => 'test@example.com'],
             [

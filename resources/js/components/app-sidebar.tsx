@@ -1,5 +1,5 @@
 import { NavFooter } from '@/components/nav-footer';
-import { NavMain } from '@/components/nav-main';
+import { NavMainNested } from '@/components/nav-main-nested';
 import { NavUser } from '@/components/nav-user';
 import {
     Sidebar,
@@ -13,14 +13,96 @@ import {
 import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
+import {
+    BookOpen,
+    Folder,
+    LayoutGrid,
+    Package,
+    Tags,
+    Building2,
+    Archive,
+    Users,
+    Truck,
+    ShoppingCart,
+    Receipt,
+    Calculator,
+    CreditCard
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
     {
         title: 'Dashboard',
-        href: dashboard(),
+        href: dashboard().url,
         icon: LayoutGrid,
+    },
+    {
+        title: 'Inventario',
+        icon: Package,
+        items: [
+            {
+                title: 'Productos',
+                href: '/products',
+                icon: Package,
+            },
+            {
+                title: 'Categorías',
+                href: '/categories',
+                icon: Tags,
+            },
+            {
+                title: 'Marcas',
+                href: '/brands',
+                icon: Tags,
+            },
+            {
+                title: 'Stock',
+                href: '/inventory',
+                icon: Archive,
+            },
+            {
+                title: 'Sucursales',
+                href: '/branches',
+                icon: Building2,
+            },
+        ],
+    },
+    {
+        title: 'Compras',
+        icon: ShoppingCart,
+        items: [
+            {
+                title: 'Proveedores',
+                href: '/suppliers',
+                icon: Truck,
+            },
+            {
+                title: 'Órdenes de Compra',
+                href: '/purchase-orders',
+                icon: Receipt,
+            },
+        ],
+    },
+    {
+        title: 'Ventas',
+        icon: CreditCard,
+        items: [
+            {
+                title: 'Clientes',
+                href: '/customers',
+                icon: Users,
+            },
+            {
+                title: 'Facturas',
+                href: '/sales',
+                icon: Receipt,
+            },
+            {
+                title: 'Cotizaciones',
+                href: '/quotes',
+                icon: Calculator,
+            },
+        ],
     },
 ];
 
@@ -53,7 +135,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMainNested items={mainNavItems} />
             </SidebarContent>
 
             <SidebarFooter>

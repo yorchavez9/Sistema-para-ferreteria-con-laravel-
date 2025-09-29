@@ -68,8 +68,8 @@
     --card-foreground: oklch(0.145 0 0);
     --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.516 0.194 263.89);
+    --primary-foreground: oklch(1 0 0);
     --secondary: oklch(0.97 0 0);
     --secondary-foreground: oklch(0.205 0 0);
     --muted: oklch(0.97 0 0);
@@ -80,7 +80,7 @@
     --destructive-foreground: oklch(0.577 0.245 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
+    --ring: oklch(0.516 0.194 263.89);
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
@@ -89,47 +89,47 @@
     --radius: 0.625rem;
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.516 0.194 263.89);
+    --sidebar-primary-foreground: oklch(1 0 0);
     --sidebar-accent: oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    --sidebar-ring: oklch(0.516 0.194 263.89);
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
+    --background: oklch(0.185 0.035 265.75);
     --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
+    --card: oklch(0.185 0.035 265.75);
     --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
+    --popover: oklch(0.185 0.035 265.75);
     --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
+    --primary: oklch(0.516 0.194 263.89);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.205 0.035 265.75);
     --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
+    --muted: oklch(0.205 0.035 265.75);
     --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
+    --accent: oklch(0.205 0.035 265.75);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.396 0.141 25.723);
     --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
+    --border: oklch(0.245 0.035 265.75);
+    --input: oklch(0.205 0.035 265.75);
+    --ring: oklch(0.516 0.194 263.89);
     --chart-1: oklch(0.488 0.243 264.376);
     --chart-2: oklch(0.696 0.17 162.48);
     --chart-3: oklch(0.769 0.188 70.08);
     --chart-4: oklch(0.627 0.265 303.9);
     --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
+    --sidebar: oklch(0.165 0.035 265.75);
     --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
+    --sidebar-primary: oklch(0.516 0.194 263.89);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.205 0.035 265.75);
     --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
+    --sidebar-border: oklch(0.245 0.035 265.75);
+    --sidebar-ring: oklch(0.516 0.194 263.89);
 }
 
 @layer base {
@@ -139,5 +139,114 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+
+    /* Estilos mejorados para inputs con transición ultra suave y shadow sutil */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="search"],
+    input[type="date"],
+    input[type="time"],
+    input[type="datetime-local"],
+    input:not([type]),
+    textarea,
+    select {
+        @apply border border-primary/15 bg-background text-foreground rounded-md px-3 py-2 text-sm;
+        box-shadow: none !important;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        outline: none;
+    }
+
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus,
+    input[type="tel"]:focus,
+    input[type="url"]:focus,
+    input[type="search"]:focus,
+    input[type="date"]:focus,
+    input[type="time"]:focus,
+    input[type="datetime-local"]:focus,
+    input:not([type]):focus,
+    textarea:focus,
+    select:focus {
+        @apply border-primary/50;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+    }
+
+    input[type="text"]:hover,
+    input[type="email"]:hover,
+    input[type="password"]:hover,
+    input[type="number"]:hover,
+    input[type="tel"]:hover,
+    input[type="url"]:hover,
+    input[type="search"]:hover,
+    input[type="date"]:hover,
+    input[type="time"]:hover,
+    input[type="datetime-local"]:hover,
+    input:not([type]):hover,
+    textarea:hover,
+    select:hover {
+        @apply border-primary/25;
+        transition: border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    input[type="text"]:disabled,
+    input[type="email"]:disabled,
+    input[type="password"]:disabled,
+    input[type="number"]:disabled,
+    input[type="tel"]:disabled,
+    input[type="url"]:disabled,
+    input[type="search"]:disabled,
+    input[type="date"]:disabled,
+    input[type="time"]:disabled,
+    input[type="datetime-local"]:disabled,
+    input:not([type]):disabled,
+    textarea:disabled,
+    select:disabled {
+        @apply border-primary/10 bg-muted text-muted-foreground cursor-not-allowed;
+    }
+}
+
+/* SweetAlert2 Custom Styles */
+@layer components {
+    .swal-popup {
+        @apply bg-background text-foreground border border-border rounded-lg shadow-lg;
+    }
+
+    .swal-title {
+        @apply text-foreground font-semibold;
+    }
+
+    .swal-content {
+        @apply text-muted-foreground;
+    }
+
+    .swal-confirm-btn {
+        @apply bg-primary text-primary-foreground hover:bg-primary/90 px-4 py-2 rounded-md font-medium transition-colors;
+    }
+
+    .swal-cancel-btn {
+        @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-md font-medium transition-colors border border-input;
+    }
+
+    .swal2-icon.swal2-warning {
+        @apply text-yellow-500;
+    }
+
+    .swal2-icon.swal2-error {
+        @apply text-destructive;
+    }
+
+    .swal2-icon.swal2-success {
+        @apply text-green-500;
+    }
+
+    .swal2-icon.swal2-info {
+        @apply text-blue-500;
     }
 }
