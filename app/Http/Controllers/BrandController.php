@@ -101,6 +101,12 @@ class BrandController extends Controller
      */
     public function destroy(Brand $brand)
     {
+        // Verificar si tiene productos asociados
+        if ($brand->products()->count() > 0) {
+            return redirect()->route('brands.index')
+                ->with('error', 'No se puede eliminar la marca porque tiene productos asociados.');
+        }
+
         $brand->delete();
 
         return redirect()->route('brands.index')

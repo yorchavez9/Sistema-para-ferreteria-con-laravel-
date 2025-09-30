@@ -138,9 +138,42 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        // Con SoftDeletes, ahora se hace eliminación lógica
+        // No importa si tiene inventario, solo se marca como eliminado
         $product->delete();
 
         return redirect()->route('products.index')
             ->with('success', 'Producto eliminado exitosamente.');
+    }
+
+    /**
+     * Restore a soft deleted product.
+     */
+    public function restore($id)
+    {
+        $product = Product::withTrashed()->findOrFail($id);
+        $product->restore();
+
+        return redirect()->route('products.index')
+            ->with('success', 'Producto restaurado exitosamente.');
+    }
+
+    /**
+     * Permanently delete a product.
+     */
+    public function forceDelete($id)
+    {
+        $product = Product::withTrashed()->findOrFail($id);
+
+        // Verificar si tiene inventario asociado antes de eliminar permanentemente
+        if ($product->inventory()->exists()) {
+            return redirect()->route('products.index')
+                ->with('error', 'No se puede eliminar permanentemente el producto porque tiene registros de inventario asociados.');
+        }
+
+        $product->forceDelete();
+
+        return redirect()->route('products.index')
+            ->with('success', 'Producto eliminado permanentemente.');
     }
 }

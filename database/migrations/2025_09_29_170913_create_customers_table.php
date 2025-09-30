@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('code')->unique();
-            $table->string('document_type')->nullable(); // RUC, DNI, CE, etc.
+            $table->string('document_type')->nullable(); // RUC, DNI, CE
             $table->string('document_number')->nullable();
             $table->text('address')->nullable();
             $table->string('phone')->nullable();

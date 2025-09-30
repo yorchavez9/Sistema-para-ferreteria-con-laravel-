@@ -25,13 +25,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'permission:category-list|category-create|category-edit|category-delete'
     ]);
 
-    // Inventario
-    Route::resource('inventory', InventoryController::class)->except(['create', 'store', 'destroy'])->middleware([
-        'permission:inventory-list|inventory-edit'
-    ]);
+    // Inventario - Rutas personalizadas ANTES del resource
     Route::get('inventory/adjustment', [InventoryController::class, 'adjustment'])->name('inventory.adjustment')->middleware('permission:inventory-adjustment');
     Route::post('inventory/adjustment', [InventoryController::class, 'processAdjustment'])->name('inventory.adjustment.process')->middleware('permission:inventory-adjustment');
     Route::get('inventory/low-stock', [InventoryController::class, 'lowStockReport'])->name('inventory.low-stock')->middleware('permission:inventory-list');
+
+    // Inventario - Resource routes
+    Route::resource('inventory', InventoryController::class)->except(['create', 'store', 'destroy'])->middleware([
+        'permission:inventory-list|inventory-edit'
+    ]);
 
     // Marcas
     Route::resource('brands', \App\Http\Controllers\BrandController::class)->middleware([
@@ -48,6 +50,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Clientes
     Route::resource('customers', \App\Http\Controllers\CustomerController::class);
+
+    // Órdenes de Compra - Rutas personalizadas ANTES del resource
+    Route::post('purchase-orders/{purchaseOrder}/receive', [\App\Http\Controllers\PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
+
+    // Órdenes de Compra - Resource routes
+    Route::resource('purchase-orders', \App\Http\Controllers\PurchaseOrderController::class);
 });
 
 require __DIR__.'/settings.php';

@@ -19,7 +19,7 @@ class BranchController extends Controller
             ->orderBy('name')
             ->paginate(15);
 
-        return Inertia::render('branches/index', [
+        return Inertia::render('Branches/Index', [
             'branches' => $branches,
             'filters' => $request->only(['search']),
         ]);
@@ -27,7 +27,7 @@ class BranchController extends Controller
 
     public function create()
     {
-        return Inertia::render('branches/create');
+        return Inertia::render('Branches/Create');
     }
 
     public function store(Request $request)
@@ -55,14 +55,14 @@ class BranchController extends Controller
             $query->with('category')->orderBy('name');
         }]);
 
-        return Inertia::render('branches/show', [
+        return Inertia::render('Branches/Show', [
             'branch' => $branch,
         ]);
     }
 
     public function edit(Branch $branch)
     {
-        return Inertia::render('branches/edit', [
+        return Inertia::render('Branches/Edit', [
             'branch' => $branch,
         ]);
     }

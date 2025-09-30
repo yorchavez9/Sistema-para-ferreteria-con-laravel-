@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Branch extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -20,18 +21,39 @@ class Branch extends Model
         'latitude',
         'longitude',
         'is_active',
+        'is_main',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_main' => 'boolean',
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
     ];
 
-    // Relación con inventario
-    public function inventory(): HasMany
+    // Relación con inventario (plural para uso en withCount)
+    public function inventories(): HasMany
     {
         return $this->hasMany(Inventory::class);
+    }
+
+    // Alias para mantener compatibilidad
+    public function inventory(): HasMany
+    {
+        return $this->inventories();
+    }
+
+    // Obtener productos únicos en esta sucursal
+    public function products()
+    {
+        return $this->hasManyThrough(
+            \App\Models\Product::class,
+            Inventory::class,
+            'branch_id',
+            'id',
+            'id',
+            'product_id'
+        )->distinct();
     }
 
     // Scope para sucursales activas

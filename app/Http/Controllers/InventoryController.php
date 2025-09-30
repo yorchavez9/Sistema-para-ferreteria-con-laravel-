@@ -17,6 +17,7 @@ class InventoryController extends Controller
     public function index(Request $request)
     {
         $inventory = Inventory::with(['product.category', 'product.brand', 'branch'])
+            ->whereHas('product') // Solo inventarios con productos activos (no eliminados)
             ->when($request->branch_id, function ($query, $branchId) {
                 $query->where('branch_id', $branchId);
             })
@@ -80,6 +81,7 @@ class InventoryController extends Controller
     public function adjustment(Request $request)
     {
         $inventory = Inventory::with(['product.category', 'product.brand', 'branch'])
+            ->whereHas('product') // Solo inventarios con productos activos
             ->when($request->branch_id, function ($query, $branchId) {
                 $query->where('branch_id', $branchId);
             })
@@ -106,26 +108,30 @@ class InventoryController extends Controller
     public function processAdjustment(Request $request)
     {
         $request->validate([
-            'adjustments' => 'required|array',
-            'adjustments.*.inventory_id' => 'required|exists:inventory,id',
-            'adjustments.*.new_stock' => 'required|integer|min:0',
-            'adjustments.*.reason' => 'required|string|max:255',
+            'inventory_id' => 'required|exists:inventory,id',
+            'new_stock' => 'required|integer|min:0',
+            'reason' => 'required|string|max:255',
         ]);
 
-        foreach ($request->adjustments as $adjustment) {
-            $inventory = Inventory::find($adjustment['inventory_id']);
-            $oldStock = $inventory->current_stock;
+        $inventory = Inventory::findOrFail($request->inventory_id);
+        $oldStock = $inventory->current_stock;
 
-            $inventory->update([
-                'current_stock' => $adjustment['new_stock'],
-                'last_movement_date' => now(),
-            ]);
+        $inventory->update([
+            'current_stock' => $request->new_stock,
+            'last_movement_date' => now(),
+        ]);
 
-            // Aquí podrías crear un registro de movimiento de inventario
-            // InventoryMovement::create([...]);
-        }
+        // Aquí podrías crear un registro de movimiento de inventario
+        // InventoryMovement::create([
+        //     'inventory_id' => $inventory->id,
+        //     'old_stock' => $oldStock,
+        //     'new_stock' => $request->new_stock,
+        //     'difference' => $request->new_stock - $oldStock,
+        //     'reason' => $request->reason,
+        //     'user_id' => auth()->id(),
+        // ]);
 
-        return redirect()->route('inventory.index')
+        return redirect()->route('inventory.adjustment')
             ->with('success', 'Ajuste de inventario realizado exitosamente.');
     }
 
@@ -135,6 +141,7 @@ class InventoryController extends Controller
     public function lowStockReport(Request $request)
     {
         $lowStockItems = Inventory::with(['product.category', 'product.brand', 'branch'])
+            ->whereHas('product') // Solo inventarios con productos activos
             ->lowStock()
             ->when($request->branch_id, function ($query, $branchId) {
                 $query->where('branch_id', $branchId);

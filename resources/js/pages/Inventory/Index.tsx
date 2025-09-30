@@ -32,8 +32,8 @@ interface InventoryItem {
         id: number;
         name: string;
         code: string;
-        min_stock: number;
-        max_stock: number;
+        min_stock: number | null;
+        max_stock: number | null;
         unit_of_measure: string;
         category: {
             name: string;
@@ -41,12 +41,12 @@ interface InventoryItem {
         brand: {
             name: string;
         };
-    };
+    } | null;
     branch: {
         id: number;
         name: string;
         location: string;
-    };
+    } | null;
 }
 
 interface Branch {
@@ -97,10 +97,21 @@ export default function InventoryIndex({ inventory, branches, filters }: Invento
     };
 
     const getStockStatus = (item: InventoryItem) => {
-        if (item.current_stock <= item.product.min_stock) {
+        // Si no hay producto asociado, retornar estado por defecto
+        if (!item.product) {
+            return { status: 'unknown', label: 'Sin Producto', variant: 'secondary' as const };
+        }
+
+        const minStock = item.product.min_stock ?? 0;
+        const maxStock = item.product.max_stock ?? Infinity;
+
+        if (item.current_stock === 0) {
+            return { status: 'out', label: 'Agotado', variant: 'destructive' as const };
+        }
+        if (item.current_stock <= minStock) {
             return { status: 'low', label: 'Stock Bajo', variant: 'destructive' as const };
         }
-        if (item.current_stock >= item.product.max_stock) {
+        if (maxStock !== Infinity && item.current_stock >= maxStock) {
             return { status: 'high', label: 'Stock Alto', variant: 'default' as const };
         }
         return { status: 'normal', label: 'Normal', variant: 'secondary' as const };
@@ -218,25 +229,33 @@ export default function InventoryIndex({ inventory, branches, filters }: Invento
                             {inventory.data.length > 0 ? (
                                 inventory.data.map((item) => {
                                     const stockInfo = getStockStatus(item);
+
+                                    // Si no hay producto, no mostramos el item
+                                    if (!item.product) {
+                                        return null;
+                                    }
+
                                     return (
                                         <TableRow key={item.id}>
                                             <TableCell>
                                                 <div>
                                                     <div className="font-medium">{item.product.name}</div>
                                                     <div className="text-sm text-muted-foreground">
-                                                        {item.product.code} • {item.product.category.name}
+                                                        {item.product.code} • {item.product.category?.name || 'Sin categoría'}
                                                     </div>
                                                     <div className="text-sm text-muted-foreground">
-                                                        {item.product.brand.name}
+                                                        {item.product.brand?.name || 'Sin marca'}
                                                     </div>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <div>
-                                                    <div className="font-medium">{item.branch.name}</div>
-                                                    <div className="text-sm text-muted-foreground">
-                                                        {item.branch.location}
-                                                    </div>
+                                                    <div className="font-medium">{item.branch?.name || 'Sin sucursal'}</div>
+                                                    {item.branch?.location && (
+                                                        <div className="text-sm text-muted-foreground">
+                                                            {item.branch.location}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -246,13 +265,13 @@ export default function InventoryIndex({ inventory, branches, filters }: Invento
                                                         {item.current_stock}
                                                     </span>
                                                     <span className="text-sm text-muted-foreground">
-                                                        {item.product.unit_of_measure}
+                                                        {item.product.unit_of_measure || 'UND'}
                                                     </span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="text-sm">
-                                                    Mín: {item.product.min_stock} • Máx: {item.product.max_stock}
+                                                    Mín: {item.product.min_stock ?? 0} • Máx: {item.product.max_stock ?? '-'}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
