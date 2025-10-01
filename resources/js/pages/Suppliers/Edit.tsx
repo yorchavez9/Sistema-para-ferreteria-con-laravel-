@@ -1,4 +1,4 @@
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Search, Loader2 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
+import { showSuccess, showError } from '@/lib/sweet-alert';
+import axios from 'axios';
 
 interface Supplier {
     id: number;
@@ -60,6 +62,47 @@ export default function EditSupplier({ supplier }: EditSupplierProps) {
         payment_terms: supplier.payment_terms || 'contado',
         is_active: supplier.is_active,
     });
+
+    const [searching, setSearching] = useState(false);
+
+    const handleSearchDocument = async () => {
+        const docNumber = data.document_number.trim();
+
+        if (!docNumber) {
+            showError('Error', 'Ingresa un número de documento');
+            return;
+        }
+
+        if (docNumber.length !== 8 && docNumber.length !== 11) {
+            showError('Error', 'El documento debe tener 8 dígitos (DNI) o 11 dígitos (RUC)');
+            return;
+        }
+
+        if (!/^\d+$/.test(docNumber)) {
+            showError('Error', 'El documento debe contener solo números');
+            return;
+        }
+
+        setSearching(true);
+        try {
+            const response = await axios.get(`/api/suppliers/external-search/${docNumber}`);
+            if (response.data) {
+                // Llenar el formulario con los datos de la API
+                setData({
+                    ...data,
+                    name: response.data.name || data.name,
+                    document_type: response.data.document_type || (docNumber.length === 8 ? 'DNI' : 'RUC'),
+                    document_number: docNumber,
+                    address: response.data.address || data.address,
+                });
+                showSuccess('¡Datos encontrados!', 'Se actualizaron los datos del proveedor');
+            }
+        } catch (error: any) {
+            showError('Error', error.response?.data?.message || 'No se pudo consultar el documento');
+        } finally {
+            setSearching(false);
+        }
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -145,12 +188,40 @@ export default function EditSupplier({ supplier }: EditSupplierProps) {
 
                             <div className="space-y-2">
                                 <Label htmlFor="document_number">Número de Documento</Label>
-                                <Input
-                                    id="document_number"
-                                    value={data.document_number}
-                                    onChange={(e) => setData('document_number', e.target.value)}
-                                    placeholder="Ej: 900123456-7"
-                                />
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="document_number"
+                                        value={data.document_number}
+                                        onChange={(e) => setData('document_number', e.target.value)}
+                                        placeholder="DNI (8 dígitos) o RUC (11 dígitos)"
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleSearchDocument();
+                                            }
+                                        }}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleSearchDocument}
+                                        disabled={searching}
+                                    >
+                                        {searching ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Search className="h-4 w-4 mr-2" />
+                                                Buscar
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Busca en RENIEC (DNI) o SUNAT (RUC) para autocompletar
+                                </p>
                                 {errors.document_number && (
                                     <p className="text-sm text-destructive">{errors.document_number}</p>
                                 )}

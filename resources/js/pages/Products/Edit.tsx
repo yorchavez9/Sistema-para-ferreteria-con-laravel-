@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Head, Link, useForm } from '@inertiajs/react';
@@ -20,6 +21,8 @@ interface Product {
     unit_of_measure: string;
     purchase_price: number;
     sale_price: number;
+    igv_percentage: number;
+    price_includes_igv: boolean;
     min_stock: number;
     max_stock: number;
     description: string | null;
@@ -52,6 +55,8 @@ export default function Edit({ product, categories, brands }: Props) {
         unit_of_measure: product.unit_of_measure,
         purchase_price: product.purchase_price,
         sale_price: product.sale_price,
+        igv_percentage: product.igv_percentage,
+        price_includes_igv: product.price_includes_igv,
         min_stock: product.min_stock,
         max_stock: product.max_stock,
         description: product.description || '',
@@ -230,6 +235,45 @@ export default function Edit({ product, categories, brands }: Props) {
                                     {errors.sale_price && (
                                         <p className="text-sm text-red-500">{errors.sale_price}</p>
                                     )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="igv_percentage">Porcentaje de IGV (%) *</Label>
+                                    <Input
+                                        id="igv_percentage"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="100"
+                                        value={data.igv_percentage}
+                                        onChange={(e) => setData('igv_percentage', parseFloat(e.target.value))}
+                                        className={errors.igv_percentage ? 'border-red-500' : ''}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Ingrese 0 para productos sin IGV, 18 para IGV estándar, o el porcentaje que corresponda
+                                    </p>
+                                    {errors.igv_percentage && (
+                                        <p className="text-sm text-red-500">{errors.igv_percentage}</p>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center space-x-2 border rounded-lg p-4 bg-muted/50">
+                                    <Checkbox
+                                        id="price_includes_igv"
+                                        checked={data.price_includes_igv}
+                                        onCheckedChange={(checked) => setData('price_includes_igv', !!checked)}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <Label
+                                            htmlFor="price_includes_igv"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                        >
+                                            El precio de venta incluye IGV
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Si está marcado, el sistema calculará el precio base separando el IGV del precio final
+                                        </p>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">

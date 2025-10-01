@@ -1,4 +1,4 @@
-import { FormEventHandler } from 'react';
+import { FormEventHandler, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,10 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Save, User, Mail, Phone, Calendar, CreditCard, FileText } from 'lucide-react';
+import { ArrowLeft, Save, User, Mail, Phone, Calendar, CreditCard, FileText, Search, Loader2 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
+import { showSuccess, showError } from '@/lib/sweet-alert';
+import axios from 'axios';
 
 interface Customer {
     id: number;
@@ -60,6 +62,65 @@ export default function EditCustomer({ customer }: EditCustomerProps) {
         notes: customer.notes || '',
         is_active: customer.is_active,
     });
+
+    const [searching, setSearching] = useState(false);
+
+    const handleSearchDocument = async () => {
+        const docNumber = data.document_number.trim();
+
+        if (!docNumber) {
+            showError('Error', 'Ingresa un número de documento');
+            return;
+        }
+
+        if (docNumber.length !== 8 && docNumber.length !== 11) {
+            showError('Error', 'El documento debe tener 8 dígitos (DNI) o 11 dígitos (RUC)');
+            return;
+        }
+
+        if (!/^\d+$/.test(docNumber)) {
+            showError('Error', 'El documento debe contener solo números');
+            return;
+        }
+
+        setSearching(true);
+        try {
+            const response = await axios.post('/customers/consultar-documento', {
+                document_number: docNumber
+            });
+
+            if (response.data.success) {
+                if (response.data.found_in_db) {
+                    // Cliente existe, actualizar con datos de la BD
+                    const customer = response.data.customer;
+                    setData({
+                        ...data,
+                        name: customer.name || data.name,
+                        document_type: customer.document_type || (docNumber.length === 8 ? 'DNI' : 'RUC'),
+                        document_number: docNumber,
+                        address: customer.address || data.address,
+                    });
+                    showSuccess('¡Datos encontrados!', 'Se actualizaron los datos desde la base de datos');
+                } else {
+                    // Actualizar con datos de la API
+                    const apiData = response.data.api_data;
+                    setData({
+                        ...data,
+                        name: apiData.name || data.name,
+                        document_type: apiData.document_type || (docNumber.length === 8 ? 'DNI' : 'RUC'),
+                        document_number: docNumber,
+                        address: apiData.direccion || data.address,
+                        customer_type: docNumber.length === 11 ? 'empresa' : 'personal',
+                    });
+                    showSuccess('¡Datos encontrados!', 'Se actualizaron los datos del cliente');
+                }
+            }
+        } catch (error: any) {
+            showError('Error', error.response?.data?.message || 'No se pudo consultar el documento');
+        } finally {
+            setSearching(false);
+        }
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -148,12 +209,40 @@ export default function EditCustomer({ customer }: EditCustomerProps) {
 
                             <div className="space-y-2">
                                 <Label htmlFor="document_number">Número de Documento</Label>
-                                <Input
-                                    id="document_number"
-                                    value={data.document_number}
-                                    onChange={(e) => setData('document_number', e.target.value)}
-                                    placeholder="Ej: 12345678"
-                                />
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="document_number"
+                                        value={data.document_number}
+                                        onChange={(e) => setData('document_number', e.target.value)}
+                                        placeholder="DNI (8 dígitos) o RUC (11 dígitos)"
+                                        onKeyPress={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleSearchDocument();
+                                            }
+                                        }}
+                                    />
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleSearchDocument}
+                                        disabled={searching}
+                                    >
+                                        {searching ? (
+                                            <>
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Search className="h-4 w-4 mr-2" />
+                                                Buscar
+                                            </>
+                                        )}
+                                    </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                    Busca en RENIEC (DNI) o SUNAT (RUC) para autocompletar
+                                </p>
                                 {errors.document_number && (
                                     <p className="text-sm text-destructive">{errors.document_number}</p>
                                 )}

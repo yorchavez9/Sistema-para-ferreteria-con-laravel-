@@ -84,16 +84,47 @@ class Sale extends Model
     // Calcular totales
     public function calculateTotals(): void
     {
-        $this->subtotal = $this->details->sum('subtotal');
+        $totalSubtotal = 0;  // Precio sin IGV
+        $totalTax = 0;        // Total de IGV
+        $totalFinal = 0;      // Precio con IGV (antes de descuentos)
 
-        // IGV solo para facturas
-        if ($this->document_type === 'factura') {
-            $this->tax = $this->subtotal * 0.18;
-        } else {
-            $this->tax = 0;
+        foreach ($this->details as $detail) {
+            $product = $detail->product;
+            $quantity = $detail->quantity;
+            $unitPrice = $detail->unit_price; // Este es el precio que se usó en la venta
+
+            // Calcular el subtotal de esta línea CON IGV
+            $lineTotal = $quantity * $unitPrice;
+
+            // Si el producto tiene precio con IGV incluido, separar el IGV
+            if ($product->price_includes_igv && $product->igv_percentage > 0) {
+                // Precio sin IGV = Precio con IGV / (1 + IGV%)
+                $igvMultiplier = 1 + ($product->igv_percentage / 100);
+                $lineSubtotalWithoutIgv = round($lineTotal / $igvMultiplier, 2);
+                $lineIgv = round($lineTotal - $lineSubtotalWithoutIgv, 2);
+
+                $totalSubtotal += $lineSubtotalWithoutIgv;
+                $totalTax += $lineIgv;
+                $totalFinal += $lineTotal;
+            } else if (!$product->price_includes_igv && $product->igv_percentage > 0) {
+                // El precio NO incluye IGV, calcular hacia adelante
+                $lineIgv = round($lineTotal * ($product->igv_percentage / 100), 2);
+
+                $totalSubtotal += $lineTotal;
+                $totalTax += $lineIgv;
+                $totalFinal += $lineTotal + $lineIgv;
+            } else {
+                // Producto sin IGV
+                $totalSubtotal += $lineTotal;
+                $totalFinal += $lineTotal;
+            }
         }
 
-        $this->total = $this->subtotal + $this->tax - $this->discount;
+        // Asignar los totales calculados
+        $this->subtotal = round($totalSubtotal, 2);
+        $this->tax = round($totalTax, 2);
+        $this->total = round($totalFinal - $this->discount, 2);
+
         $this->save();
     }
 

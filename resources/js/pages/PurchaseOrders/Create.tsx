@@ -21,14 +21,18 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Trash2, ShoppingCart, Calendar, Package, List } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ShoppingCart, Calendar, Package, List, Search, Loader2 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { showSuccess, showError } from '@/lib/sweet-alert';
 import ProductSelectorModal from '@/components/ProductSelectorModal';
+import axios from 'axios';
 
 interface Supplier {
-    id: number;
+    id?: number;
     name: string;
+    code?: string;
+    document_type?: string;
+    document_number?: string;
 }
 
 interface Branch {
@@ -53,9 +57,11 @@ interface OrderDetail {
     product?: Product;
     quantity: number;
     unit_price: number;
+    sale_price: number;
 }
 
 interface PurchaseOrdersCreateProps {
+    defaultBranchId?: number;
     suppliers: Supplier[];
     branches: Branch[];
     products: Product[];
@@ -67,12 +73,12 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Crear', href: '/purchase-orders/create' },
 ];
 
-export default function PurchaseOrdersCreate({ suppliers, branches, products }: PurchaseOrdersCreateProps) {
+export default function PurchaseOrdersCreate({ defaultBranchId, suppliers, branches, products }: PurchaseOrdersCreateProps) {
     const [formData, setFormData] = useState({
         series: '',
         correlativo: '',
         supplier_id: '',
-        branch_id: '',
+        branch_id: defaultBranchId ? defaultBranchId.toString() : (branches[0]?.id.toString() || ''),
         order_date: new Date().toISOString().split('T')[0],
         expected_date: '',
         discount: '',
@@ -81,6 +87,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
 
     const [details, setDetails] = useState<OrderDetail[]>([]);
     const [selectedProductId, setSelectedProductId] = useState('');
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -89,6 +96,14 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
     const [showProductModal, setShowProductModal] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Supplier search states
+    const [supplierSearch, setSupplierSearch] = useState('');
+    const [supplierResults, setSupplierResults] = useState<Supplier[]>([]);
+    const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+    const [supplierLoading, setSupplierLoading] = useState(false);
+    const supplierSearchRef = useRef<HTMLInputElement>(null);
+    const supplierDropdownRef = useRef<HTMLDivElement>(null);
 
     // Filter products based on search term
     const filteredProducts = useMemo(() => {
@@ -109,6 +124,10 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                 searchInputRef.current && !searchInputRef.current.contains(event.target as Node)) {
                 setShowDropdown(false);
             }
+            if (supplierDropdownRef.current && !supplierDropdownRef.current.contains(event.target as Node) &&
+                supplierSearchRef.current && !supplierSearchRef.current.contains(event.target as Node)) {
+                setShowSupplierDropdown(false);
+            }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
@@ -124,6 +143,34 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
             setShowDropdown(false);
         }
     }, [searchTerm]);
+
+    // Supplier search
+    useEffect(() => {
+        const searchSuppliers = async () => {
+            if (supplierSearch.length < 2) {
+                setSupplierResults([]);
+                setShowSupplierDropdown(false);
+                return;
+            }
+
+            setSupplierLoading(true);
+            try {
+                const response = await axios.get('/api/suppliers/search', {
+                    params: { q: supplierSearch }
+                });
+                setSupplierResults(response.data);
+                setShowSupplierDropdown(true);
+            } catch (error) {
+                console.error('Error searching suppliers:', error);
+                setSupplierResults([]);
+            } finally {
+                setSupplierLoading(false);
+            }
+        };
+
+        const debounce = setTimeout(searchSuppliers, 300);
+        return () => clearTimeout(debounce);
+    }, [supplierSearch]);
 
     // Calculate totals
     const subtotal = useMemo(() => {
@@ -189,6 +236,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                 product_id: detail.product_id,
                 quantity: detail.quantity,
                 unit_price: detail.unit_price,
+                sale_price: detail.sale_price,
             })),
         };
 
@@ -224,6 +272,45 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
         }
     };
 
+    const handleSelectSupplier = (supplier: Supplier) => {
+        setSelectedSupplier(supplier);
+        if (supplier.id) {
+            setFormData(prev => ({ ...prev, supplier_id: supplier.id!.toString() }));
+        }
+        setSupplierSearch('');
+        setShowSupplierDropdown(false);
+    };
+
+    const handleClearSupplier = () => {
+        setSelectedSupplier(null);
+        setFormData(prev => ({ ...prev, supplier_id: '' }));
+    };
+
+    const handleQuickExternalSearchSupplier = async (document: string) => {
+        setSupplierLoading(true);
+        try {
+            const response = await axios.get(`/api/suppliers/external-search/${document}`);
+            if (response.data) {
+                // Si tiene id, es un proveedor existente
+                if (response.data.id) {
+                    handleSelectSupplier(response.data);
+                    showSuccess('¡Proveedor encontrado!', `Se encontró: ${response.data.name}`);
+                } else {
+                    // Si no tiene id, crear el proveedor primero
+                    const createResponse = await axios.post('/suppliers/quick-store', response.data);
+                    if (createResponse.data.success) {
+                        handleSelectSupplier(createResponse.data.supplier);
+                        showSuccess('¡Proveedor creado!', `Se creó: ${createResponse.data.supplier.name}`);
+                    }
+                }
+            }
+        } catch (error: any) {
+            showError('Error', error.response?.data?.message || 'No se pudo obtener la información');
+        } finally {
+            setSupplierLoading(false);
+        }
+    };
+
     const addProductById = (productId: number) => {
         const product = products.find(p => p.id === productId);
         if (!product) return;
@@ -242,6 +329,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                 product: product,
                 quantity: 1,
                 unit_price: 0,
+                sale_price: 0,
             }]);
         }
 
@@ -300,7 +388,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
         setDetails(details.filter((_, i) => i !== index));
     };
 
-    const updateDetail = (index: number, field: 'quantity' | 'unit_price', value: string) => {
+    const updateDetail = (index: number, field: 'quantity' | 'unit_price' | 'sale_price', value: string) => {
         const newDetails = [...details];
         const numValue = parseFloat(value) || 0;
         newDetails[index][field] = numValue;
@@ -385,57 +473,80 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                     </p>
                                 </div>
 
-                                <div>
-                                    <Label htmlFor="supplier_id">Proveedor *</Label>
-                                    <Select
-                                        value={formData.supplier_id}
-                                        onValueChange={(value) => handleChange('supplier_id', value)}
-                                    >
-                                        <SelectTrigger className={errors.supplier_id ? 'border-red-500' : ''}>
-                                            <SelectValue placeholder="Seleccionar proveedor" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {suppliers.map((supplier) => (
-                                                <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                                                    {supplier.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {errors.supplier_id && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.supplier_id}</p>
-                                    )}
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="branch_id">Sucursal *</Label>
-                                    <Select
-                                        value={formData.branch_id}
-                                        onValueChange={(value) => handleChange('branch_id', value)}
-                                    >
-                                        <SelectTrigger className={errors.branch_id ? 'border-red-500' : ''}>
-                                            <SelectValue placeholder="Seleccionar sucursal" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {branches.map((branch) => (
-                                                <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                    {branch.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {errors.branch_id && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.branch_id}</p>
-                                    )}
-                                </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <Label htmlFor="order_date" className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4" />
-                                        Fecha de Orden *
-                                    </Label>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
+                                <div className="space-y-2">
+                                    {!selectedSupplier ? (
+                                        <div>
+                                            <Label htmlFor="supplier-search">Proveedor *</Label>
+                                            <div className="relative">
+                                                <Input
+                                                    ref={supplierSearchRef}
+                                                    id="supplier-search"
+                                                    placeholder="Buscar por nombre, DNI o RUC..."
+                                                    value={supplierSearch}
+                                                    onChange={(e) => setSupplierSearch(e.target.value)}
+                                                    autoComplete="off"
+                                                    className="pr-10"
+                                                />
+                                                {supplierLoading ? (
+                                                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+                                                ) : (
+                                                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                )}
+
+                                                {showSupplierDropdown && supplierResults.length > 0 && (
+                                                    <div ref={supplierDropdownRef} className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-[200px] overflow-auto">
+                                                        {supplierResults.map((supplier) => (
+                                                            <button
+                                                                key={supplier.id}
+                                                                type="button"
+                                                                onClick={() => handleSelectSupplier(supplier)}
+                                                                className="w-full text-left px-3 py-2 hover:bg-accent cursor-pointer transition-colors border-b last:border-b-0"
+                                                            >
+                                                                <p className="font-medium text-sm">{supplier.name}</p>
+                                                                <p className="text-xs text-muted-foreground">{supplier.document_type}: {supplier.document_number}</p>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {showSupplierDropdown && supplierSearch.length >= 2 && supplierResults.length === 0 && !supplierLoading && (
+                                                    <div ref={supplierDropdownRef} className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+                                                        <p className="text-sm text-muted-foreground mb-2">No se encontró el proveedor</p>
+                                                        {(supplierSearch.length === 8 || supplierSearch.length === 11) && /^\d+$/.test(supplierSearch) ? (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                onClick={() => handleQuickExternalSearchSupplier(supplierSearch)}
+                                                            >
+                                                                <Search className="h-4 w-4 mr-2" />
+                                                                Buscar en {supplierSearch.length === 8 ? 'RENIEC' : 'SUNAT'}
+                                                            </Button>
+                                                        ) : (
+                                                            <p className="text-xs text-amber-600">Ingresa DNI (8) o RUC (11 dígitos)</p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">Escribe mínimo 2 caracteres</p>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <Label>Proveedor *</Label>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 border rounded-lg px-3 py-2 bg-muted/50">
+                                                    <p className="text-sm font-semibold">{selectedSupplier.document_type}: {selectedSupplier.document_number} - {selectedSupplier.name}</p>
+                                                </div>
+                                                <Button type="button" variant="outline" size="sm" onClick={handleClearSupplier}>Cambiar</Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="order_date">Fecha de Orden *</Label>
                                     <Input
                                         id="order_date"
                                         type="date"
@@ -444,15 +555,12 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                         className={errors.order_date ? 'border-red-500' : ''}
                                     />
                                     {errors.order_date && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.order_date}</p>
+                                        <p className="text-sm text-red-500">{errors.order_date}</p>
                                     )}
                                 </div>
 
-                                <div>
-                                    <Label htmlFor="expected_date" className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4" />
-                                        Fecha Esperada de Entrega
-                                    </Label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="expected_date">Fecha Esperada</Label>
                                     <Input
                                         id="expected_date"
                                         type="date"
@@ -461,11 +569,11 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                         className={errors.expected_date ? 'border-red-500' : ''}
                                     />
                                     {errors.expected_date && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.expected_date}</p>
+                                        <p className="text-sm text-red-500">{errors.expected_date}</p>
                                     )}
                                 </div>
 
-                                <div>
+                                <div className="space-y-2">
                                     <Label htmlFor="discount">Descuento (PEN)</Label>
                                     <Input
                                         id="discount"
@@ -478,7 +586,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                         className={errors.discount ? 'border-red-500' : ''}
                                     />
                                     {errors.discount && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.discount}</p>
+                                        <p className="text-sm text-red-500">{errors.discount}</p>
                                     )}
                                 </div>
                             </div>
@@ -595,8 +703,9 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                                 <TableHead>Producto</TableHead>
                                                 <TableHead>Categoría</TableHead>
                                                 <TableHead>Marca</TableHead>
-                                                <TableHead className="w-32">Cantidad</TableHead>
-                                                <TableHead className="w-40">Precio Unit.</TableHead>
+                                                <TableHead className="w-28">Cantidad</TableHead>
+                                                <TableHead className="w-32">P. Compra</TableHead>
+                                                <TableHead className="w-32">P. Venta</TableHead>
                                                 <TableHead className="text-right">Subtotal</TableHead>
                                                 <TableHead className="w-20"></TableHead>
                                             </TableRow>
@@ -632,6 +741,17 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                                             min="0"
                                                             value={detail.unit_price}
                                                             onChange={(e) => updateDetail(index, 'unit_price', e.target.value)}
+                                                            placeholder="0.00"
+                                                            className="w-full"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Input
+                                                            type="number"
+                                                            step="0.01"
+                                                            min="0"
+                                                            value={detail.sale_price}
+                                                            onChange={(e) => updateDetail(index, 'sale_price', e.target.value)}
                                                             placeholder="0.00"
                                                             className="w-full"
                                                         />

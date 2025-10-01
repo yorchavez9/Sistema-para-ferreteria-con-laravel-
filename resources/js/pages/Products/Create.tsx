@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     Select,
     SelectContent,
@@ -54,6 +55,8 @@ export default function ProductsCreate({ categories, brands }: ProductsCreatePro
         sale_price: '',
         min_stock: '',
         max_stock: '',
+        igv_percentage: '18.00',
+        price_includes_igv: true,
         weight: '',
         dimensions: '',
     });
@@ -285,6 +288,46 @@ export default function ProductsCreate({ categories, brands }: ProductsCreatePro
                                         {errors.sale_price && (
                                             <p className="text-sm text-red-500 mt-1">{errors.sale_price}</p>
                                         )}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="igv_percentage">Porcentaje de IGV (%) *</Label>
+                                    <Input
+                                        id="igv_percentage"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="100"
+                                        value={formData.igv_percentage}
+                                        onChange={(e) => handleChange('igv_percentage', e.target.value)}
+                                        placeholder="18.00"
+                                        className={errors.igv_percentage ? 'border-red-500' : ''}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Ingrese 0 para productos sin IGV, 18 para IGV estándar, o el porcentaje que corresponda
+                                    </p>
+                                    {errors.igv_percentage && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.igv_percentage}</p>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center space-x-2 border rounded-lg p-4 bg-muted/50">
+                                    <Checkbox
+                                        id="price_includes_igv"
+                                        checked={formData.price_includes_igv}
+                                        onCheckedChange={(checked) => handleChange('price_includes_igv', checked ? 'true' : 'false')}
+                                    />
+                                    <div className="grid gap-1.5 leading-none">
+                                        <Label
+                                            htmlFor="price_includes_igv"
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                                        >
+                                            El precio de venta incluye IGV
+                                        </Label>
+                                        <p className="text-xs text-muted-foreground">
+                                            Si está marcado, el sistema calculará el precio base separando el IGV del precio final
+                                        </p>
                                     </div>
                                 </div>
 

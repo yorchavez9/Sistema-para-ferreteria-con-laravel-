@@ -99,7 +99,11 @@ class PurchaseOrderController extends Controller
         $branches = Branch::active()->get();
         $products = Product::active()->with(['category', 'brand'])->get();
 
+        // Obtener la sucursal por defecto del usuario o la primera disponible
+        $defaultBranchId = auth()->user()->branch_id ?? $branches->first()?->id;
+
         return Inertia::render('PurchaseOrders/Create', [
+            'defaultBranchId' => $defaultBranchId,
             'suppliers' => $suppliers,
             'branches' => $branches,
             'products' => $products,
@@ -121,6 +125,7 @@ class PurchaseOrderController extends Controller
             'details.*.product_id' => 'required|exists:products,id',
             'details.*.quantity' => 'required|integer|min:1',
             'details.*.unit_price' => 'required|numeric|min:0',
+            'details.*.sale_price' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -144,6 +149,7 @@ class PurchaseOrderController extends Controller
                     'quantity_ordered' => $detail['quantity'],
                     'quantity_received' => 0,
                     'unit_price' => $detail['unit_price'],
+                    'sale_price' => $detail['sale_price'] ?? null,
                     'subtotal' => $detail['quantity'] * $detail['unit_price'],
                 ]);
             }
@@ -179,8 +185,12 @@ class PurchaseOrderController extends Controller
         $branches = Branch::active()->get();
         $products = Product::active()->with(['category', 'brand'])->get();
 
+        // Obtener la sucursal por defecto del usuario o la primera disponible
+        $defaultBranchId = auth()->user()->branch_id ?? $branches->first()?->id;
+
         return Inertia::render('PurchaseOrders/Edit', [
             'order' => $purchaseOrder,
+            'defaultBranchId' => $defaultBranchId,
             'suppliers' => $suppliers,
             'branches' => $branches,
             'products' => $products,
@@ -204,6 +214,7 @@ class PurchaseOrderController extends Controller
             'details.*.product_id' => 'required|exists:products,id',
             'details.*.quantity' => 'required|integer|min:1',
             'details.*.unit_price' => 'required|numeric|min:0',
+            'details.*.sale_price' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -225,6 +236,7 @@ class PurchaseOrderController extends Controller
                     'quantity_ordered' => $detail['quantity'],
                     'quantity_received' => 0,
                     'unit_price' => $detail['unit_price'],
+                    'sale_price' => $detail['sale_price'] ?? null,
                     'subtotal' => $detail['quantity'] * $detail['unit_price'],
                 ]);
             }

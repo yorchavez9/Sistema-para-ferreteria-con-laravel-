@@ -31,13 +31,17 @@ class Product extends Model
         'images',
         'is_active',
         'track_stock',
+        'igv_percentage',
+        'price_includes_igv',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'track_stock' => 'boolean',
+        'price_includes_igv' => 'boolean',
         'purchase_price' => 'decimal:2',
         'sale_price' => 'decimal:2',
+        'igv_percentage' => 'decimal:2',
         'weight' => 'decimal:2',
         'min_stock' => 'integer',
         'max_stock' => 'integer',
@@ -79,5 +83,40 @@ class Product extends Model
     {
         $inventory = $this->inventory->where('branch_id', $branchId)->first();
         return $inventory ? $inventory->current_stock : 0;
+    }
+
+    /**
+     * Calcular precio de venta sin IGV
+     * Si el precio incluye IGV, lo calcula hacia atrás
+     * Si no incluye IGV, retorna el precio tal cual
+     */
+    public function getPriceWithoutIgv()
+    {
+        if (!$this->price_includes_igv) {
+            return $this->sale_price;
+        }
+
+        // Si el precio incluye IGV, calculamos el precio base
+        // Precio sin IGV = Precio con IGV / (1 + porcentaje/100)
+        $igvMultiplier = 1 + ($this->igv_percentage / 100);
+        return round($this->sale_price / $igvMultiplier, 2);
+    }
+
+    /**
+     * Calcular el monto del IGV para este producto
+     */
+    public function getIgvAmount()
+    {
+        if ($this->igv_percentage == 0) {
+            return 0;
+        }
+
+        if ($this->price_includes_igv) {
+            // IGV = Precio final - Precio sin IGV
+            return round($this->sale_price - $this->getPriceWithoutIgv(), 2);
+        }
+
+        // Si el precio no incluye IGV, calculamos hacia adelante
+        return round($this->sale_price * ($this->igv_percentage / 100), 2);
     }
 }

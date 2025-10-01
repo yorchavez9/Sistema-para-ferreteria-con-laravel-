@@ -261,10 +261,27 @@ class SaleController extends Controller
 
             DB::commit();
 
-            return redirect()->route('sales.show', $sale)
-                ->with('success', 'Venta creada exitosamente.');
+            // Devolver datos para el modal en lugar de redirigir
+            return response()->json([
+                'success' => true,
+                'message' => 'Venta creada exitosamente',
+                'sale' => [
+                    'id' => $sale->id,
+                    'sale_number' => $sale->sale_number,
+                    'total' => $sale->total,
+                ]
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
+            // Si es una petición AJAX, devolver JSON
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error al crear la venta: ' . $e->getMessage(),
+                ], 500);
+            }
+
             return back()->withErrors(['error' => 'Error al crear la venta: ' . $e->getMessage()]);
         }
     }
@@ -431,12 +448,14 @@ class SaleController extends Controller
 
         $filename = "venta-{$sale->sale_number}.pdf";
 
-        // Si es preview, devolver el PDF inline para mostrarlo en el navegador
-        if ($request->query('preview') === 'true') {
+        $action = $request->query('action', 'download'); // print, download
+
+        // Si es para imprimir, mostrar inline en el navegador
+        if ($action === 'print' || $request->query('preview') === 'true') {
             return $pdf->stream($filename);
         }
 
-        // Si no es preview, descargar el PDF
+        // Si no, descargar el PDF
         return $pdf->download($filename);
     }
 

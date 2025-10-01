@@ -18,6 +18,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // API Routes
     Route::get('api/products/search', [ProductController::class, 'search'])->name('api.products.search');
     Route::get('api/customers/search', [\App\Http\Controllers\CustomerController::class, 'searchApi'])->name('api.customers.search');
+    Route::get('api/suppliers/search', [\App\Http\Controllers\SupplierController::class, 'searchApi'])->name('api.suppliers.search');
+    Route::get('api/suppliers/external-search/{document}', [\App\Http\Controllers\SupplierController::class, 'externalSearch'])->name('api.suppliers.external-search');
 
     // Productos
     Route::resource('products', ProductController::class)->middleware([
@@ -49,7 +51,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'permission:branch-list|branch-create|branch-edit|branch-delete'
     ]);
 
-    // Proveedores
+    // Proveedores - Rutas personalizadas ANTES del resource
+    Route::post('suppliers/quick-store', [\App\Http\Controllers\SupplierController::class, 'quickStore'])->name('suppliers.quick-store');
+
+    // Proveedores - Resource routes
     Route::resource('suppliers', \App\Http\Controllers\SupplierController::class);
 
     // Clientes - Rutas personalizadas ANTES del resource

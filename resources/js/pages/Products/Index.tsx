@@ -54,6 +54,7 @@ interface Product {
     purchase_price: number;
     sale_price: number;
     min_stock: number;
+    total_stock?: number;
     is_active: boolean;
 }
 
@@ -346,11 +347,17 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
                                         Marca <SortIcon field="brand" />
                                     </div>
                                 </TableHead>
-                                <TableHead className="hidden md:table-cell text-xs cursor-pointer" onClick={() => handleSort('sale_price')}>
+                                <TableHead className="hidden lg:table-cell text-xs cursor-pointer" onClick={() => handleSort('purchase_price')}>
                                     <div className="flex items-center gap-1">
-                                        Precio <SortIcon field="sale_price" />
+                                        P. Compra <SortIcon field="purchase_price" />
                                     </div>
                                 </TableHead>
+                                <TableHead className="hidden md:table-cell text-xs cursor-pointer" onClick={() => handleSort('sale_price')}>
+                                    <div className="flex items-center gap-1">
+                                        P. Venta <SortIcon field="sale_price" />
+                                    </div>
+                                </TableHead>
+                                <TableHead className="hidden lg:table-cell text-xs text-center">Stock</TableHead>
                                 <TableHead className="text-xs">Estado</TableHead>
                                 <TableHead className="w-24 text-xs">Acciones</TableHead>
                             </TableRow>
@@ -376,7 +383,11 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
                                                 <TableCell className="font-medium text-sm">{product.name}</TableCell>
                                                 <TableCell className="hidden md:table-cell text-xs">{product.category.name}</TableCell>
                                                 <TableCell className="hidden md:table-cell text-xs">{product.brand.name}</TableCell>
-                                                <TableCell className="hidden md:table-cell font-semibold text-sm">{formatCurrency(product.sale_price)}</TableCell>
+                                                <TableCell className="hidden lg:table-cell font-semibold text-sm">{formatCurrency(product.purchase_price)}</TableCell>
+                                                <TableCell className="hidden md:table-cell font-semibold text-sm text-green-600">{formatCurrency(product.sale_price)}</TableCell>
+                                                <TableCell className="hidden lg:table-cell text-center">
+                                                    <span className="font-mono font-semibold">{(product as any).inventory_sum_current_stock || 0}</span>
+                                                </TableCell>
                                                 <TableCell>
                                                     <Badge className={product.is_active ? 'bg-green-100 text-green-800 border-green-300 text-xs' : 'bg-red-100 text-red-800 border-red-300 text-xs'}>
                                                         {product.is_active ? 'Activo' : 'Inactivo'}

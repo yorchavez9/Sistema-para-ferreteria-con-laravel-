@@ -16,6 +16,7 @@ class PurchaseOrderDetail extends Model
         'quantity_ordered',
         'quantity_received',
         'unit_price',
+        'sale_price',
         'subtotal',
     ];
 
@@ -23,6 +24,7 @@ class PurchaseOrderDetail extends Model
         'quantity_ordered' => 'integer',
         'quantity_received' => 'integer',
         'unit_price' => 'decimal:2',
+        'sale_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
     ];
 

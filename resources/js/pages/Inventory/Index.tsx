@@ -25,9 +25,11 @@ import { type BreadcrumbItem } from '@/types';
 interface InventoryItem {
     id: number;
     current_stock: number;
-    unit_cost: number;
-    unit_price: number;
-    last_updated: string;
+    min_stock: number | null;
+    max_stock: number | null;
+    cost_price: number;
+    sale_price: number;
+    last_movement_date: string;
     product: {
         id: number;
         name: string;
@@ -102,8 +104,9 @@ export default function InventoryIndex({ inventory, branches, filters }: Invento
             return { status: 'unknown', label: 'Sin Producto', variant: 'secondary' as const };
         }
 
-        const minStock = item.product.min_stock ?? 0;
-        const maxStock = item.product.max_stock ?? Infinity;
+        // Usar los valores de min/max del inventario primero, si no existen usar los del producto
+        const minStock = item.min_stock ?? item.product.min_stock ?? 0;
+        const maxStock = item.max_stock ?? item.product.max_stock ?? Infinity;
 
         if (item.current_stock === 0) {
             return { status: 'out', label: 'Agotado', variant: 'destructive' as const };
@@ -271,7 +274,7 @@ export default function InventoryIndex({ inventory, branches, filters }: Invento
                                             </TableCell>
                                             <TableCell>
                                                 <div className="text-sm">
-                                                    Mín: {item.product.min_stock ?? 0} • Máx: {item.product.max_stock ?? '-'}
+                                                    Mín: {item.min_stock ?? item.product.min_stock ?? 0} • Máx: {item.max_stock ?? item.product.max_stock ?? '-'}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -279,10 +282,10 @@ export default function InventoryIndex({ inventory, branches, filters }: Invento
                                                     {stockInfo.label}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell>{formatCurrency(item.unit_cost)}</TableCell>
-                                            <TableCell>{formatCurrency(item.unit_price)}</TableCell>
+                                            <TableCell>{formatCurrency(item.cost_price)}</TableCell>
+                                            <TableCell>{formatCurrency(item.sale_price)}</TableCell>
                                             <TableCell className="text-sm">
-                                                {formatDate(item.last_updated)}
+                                                {formatDate(item.last_movement_date)}
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <div className="flex justify-end gap-2">

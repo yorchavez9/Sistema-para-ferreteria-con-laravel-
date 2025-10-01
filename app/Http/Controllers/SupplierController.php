@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Services\DocumentApiService;
 
 class SupplierController extends Controller
 {
@@ -135,5 +136,106 @@ class SupplierController extends Controller
 
         return redirect()->route('suppliers.index')
             ->with('success', 'Proveedor eliminado exitosamente.');
+    }
+
+    /**
+     * Crear proveedor rápido desde modal (versión simplificada)
+     */
+    public function quickStore(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'document_type' => 'required|in:DNI,RUC,CE',
+            'document_number' => 'required|string|max:20|unique:suppliers,document_number',
+            'phone' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:500',
+        ]);
+
+        // Generar código automático
+        $lastSupplier = Supplier::orderBy('id', 'desc')->first();
+        $nextNumber = $lastSupplier ? ((int) substr($lastSupplier->code, 3)) + 1 : 1;
+        $code = 'PRV' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+        $supplier = Supplier::create([
+            'code' => $code,
+            'name' => $validated['name'],
+            'document_type' => $validated['document_type'],
+            'document_number' => $validated['document_number'],
+            'phone' => $validated['phone'] ?? null,
+            'email' => $validated['email'] ?? null,
+            'address' => $validated['address'] ?? null,
+            'payment_terms' => 'contado', // Valor por defecto
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'supplier' => $supplier,
+            'message' => 'Proveedor creado exitosamente.',
+        ]);
+    }
+
+    /**
+     * Buscar proveedores para API (usado en órdenes de compra)
+     */
+    public function searchApi(Request $request)
+    {
+        $search = $request->get('q', '');
+
+        if (strlen($search) < 2) {
+            return response()->json([]);
+        }
+
+        $suppliers = Supplier::where('is_active', true)
+            ->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('document_number', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            })
+            ->select('id', 'code', 'name', 'document_type', 'document_number', 'phone', 'email', 'address')
+            ->limit(10)
+            ->get();
+
+        return response()->json($suppliers);
+    }
+
+    /**
+     * Buscar proveedor en API externa (RENIEC/SUNAT) o en base de datos local
+     */
+    public function externalSearch($document, DocumentApiService $apiService)
+    {
+        $documentNumber = trim($document);
+
+        // Primero buscar en la base de datos local
+        $supplier = Supplier::where('document_number', $documentNumber)
+            ->where('is_active', true)
+            ->first();
+
+        if ($supplier) {
+            return response()->json($supplier);
+        }
+
+        // Si no existe localmente, consultar en la API externa
+        $result = $apiService->consultarDocumento($documentNumber);
+
+        if ($result['success']) {
+            // Retornar los datos de la API para que el frontend pueda crear el proveedor
+            $apiData = $result['data'];
+
+            // Preparar datos en formato compatible con el modelo Supplier
+            $supplierData = [
+                'name' => $apiData['name'] ?? '',
+                'document_type' => $apiData['document_type'] ?? (strlen($documentNumber) === 8 ? 'DNI' : 'RUC'),
+                'document_number' => $documentNumber,
+                'address' => $apiData['direccion'] ?? '',
+            ];
+
+            return response()->json($supplierData);
+        }
+
+        return response()->json([
+            'message' => $result['message'] ?? 'No se pudo consultar el documento',
+        ], 404);
     }
 }

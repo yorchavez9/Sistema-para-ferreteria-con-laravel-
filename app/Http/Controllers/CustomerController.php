@@ -72,6 +72,7 @@ class CustomerController extends Controller
         // Convertir strings vacíos a null
         $validated['document_type'] = $validated['document_type'] ?: null;
         $validated['document_number'] = $validated['document_number'] ?: null;
+        $validated['credit_limit'] = $validated['credit_limit'] ?: null;
 
         Customer::create($validated);
 
@@ -123,6 +124,7 @@ class CustomerController extends Controller
         // Convertir strings vacíos a null
         $validated['document_type'] = $validated['document_type'] ?: null;
         $validated['document_number'] = $validated['document_number'] ?: null;
+        $validated['credit_limit'] = $validated['credit_limit'] ?: null;
 
         $customer->update($validated);
 

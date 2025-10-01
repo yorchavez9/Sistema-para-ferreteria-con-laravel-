@@ -21,7 +21,7 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Trash2, ShoppingCart, Calendar, Package, User, List, DollarSign, Search, UserPlus, Loader2, CheckCircle, Minus } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ShoppingCart, Calendar, Package, User, List, DollarSign, Search, UserPlus, Loader2, CheckCircle, Minus, Printer } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { showSuccess, showError } from '@/lib/sweet-alert';
 import ProductSelectorModal from '@/components/ProductSelectorModal';
@@ -46,6 +46,8 @@ interface Product {
     code: string;
     sale_price: number;
     purchase_price?: number;
+    igv_percentage: number;
+    price_includes_igv: boolean;
     category?: {
         name: string;
     };
@@ -86,9 +88,14 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function SalesCreate({ defaultBranchId, customers, branches, products, documentSeries }: SalesCreateProps) {
+    // Auto-seleccionar la primera serie disponible para boleta por defecto
+    const defaultSeriesId = documentSeries.boleta.length > 0
+        ? documentSeries.boleta[0].id.toString()
+        : '';
+
     const [formData, setFormData] = useState({
         document_type: 'boleta',
-        document_series_id: '',
+        document_series_id: defaultSeriesId,
         customer_id: '',
         branch_id: defaultBranchId ? defaultBranchId.toString() : (branches[0]?.id.toString() || ''),
         sale_date: new Date().toISOString().split('T')[0],
@@ -109,6 +116,11 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
     const [searchTerm, setSearchTerm] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
     const [highlightedIndex, setHighlightedIndex] = useState(-1);
+    const [showPrintSizeModal, setShowPrintSizeModal] = useState(false);
+    const [selectedPrintSize, setSelectedPrintSize] = useState<string>('');
+    const [saleData, setSaleData] = useState<{ id: number; sale_number: string; total: number } | null>(null);
+    const [showPdfModal, setShowPdfModal] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState<string>('');
     const [showProductModal, setShowProductModal] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
@@ -313,27 +325,80 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
     }, [searchTerm]);
 
     // Calculate totals
-    const subtotal = useMemo(() => {
-        return details.reduce((sum, detail) => sum + (detail.quantity * detail.unit_price), 0);
-    }, [details]);
+    const { subtotal, tax, total: totalBeforeDiscount } = useMemo(() => {
+        let calculatedSubtotal = 0;  // Precio sin IGV
+        let calculatedTax = 0;        // Total de IGV
+        let calculatedTotal = 0;      // Precio con IGV (antes de descuentos)
 
-    const tax = useMemo(() => {
-        // IGV solo para facturas
-        return formData.document_type === 'factura' ? subtotal * 0.18 : 0;
-    }, [subtotal, formData.document_type]);
+        // Si es nota de venta, NO calcular IGV
+        const isNotaVenta = formData.document_type === 'nota_venta';
+
+        details.forEach(detail => {
+            const product = detail.product;
+            if (!product) return;
+
+            const lineTotal = detail.quantity * detail.unit_price;
+
+            // Para nota de venta: NO calcular IGV
+            if (isNotaVenta) {
+                calculatedSubtotal += lineTotal;
+                calculatedTotal += lineTotal;
+                return;
+            }
+
+            // Para boleta y factura: calcular IGV según configuración del producto
+            if (product.price_includes_igv && product.igv_percentage > 0) {
+                // Precio sin IGV = Precio con IGV / (1 + IGV%)
+                const igvMultiplier = 1 + (product.igv_percentage / 100);
+                const lineSubtotalWithoutIgv = lineTotal / igvMultiplier;
+                const lineIgv = lineTotal - lineSubtotalWithoutIgv;
+
+                calculatedSubtotal += lineSubtotalWithoutIgv;
+                calculatedTax += lineIgv;
+                calculatedTotal += lineTotal;
+            } else if (!product.price_includes_igv && product.igv_percentage > 0) {
+                // El precio NO incluye IGV, calcular hacia adelante
+                const lineIgv = lineTotal * (product.igv_percentage / 100);
+
+                calculatedSubtotal += lineTotal;
+                calculatedTax += lineIgv;
+                calculatedTotal += lineTotal + lineIgv;
+            } else {
+                // Producto sin IGV
+                calculatedSubtotal += lineTotal;
+                calculatedTotal += lineTotal;
+            }
+        });
+
+        return {
+            subtotal: calculatedSubtotal,
+            tax: calculatedTax,
+            total: calculatedTotal
+        };
+    }, [details, formData.document_type]);
 
     const discount = useMemo(() => {
         return parseFloat(formData.discount) || 0;
     }, [formData.discount]);
 
     const total = useMemo(() => {
-        return subtotal + tax - discount;
-    }, [subtotal, tax, discount]);
+        return totalBeforeDiscount - discount;
+    }, [totalBeforeDiscount, discount]);
 
     const changeAmount = useMemo(() => {
         const paid = parseFloat(formData.amount_paid) || 0;
         return Math.max(0, paid - total);
     }, [formData.amount_paid, total]);
+
+    // Auto-fill amount_paid with total when it changes (only for contado)
+    useEffect(() => {
+        if (formData.payment_type === 'contado' && total > 0) {
+            setFormData(prev => ({
+                ...prev,
+                amount_paid: total.toFixed(2)
+            }));
+        }
+    }, [total, formData.payment_type]);
 
     // Obtener series disponibles según tipo de documento
     const availableSeries = useMemo(() => {
@@ -379,32 +444,27 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
         setErrors({});
 
         if (!selectedCustomer) {
             showError('Error de validación', 'Debes seleccionar un cliente.');
-            setLoading(false);
             return;
         }
 
         if (details.length === 0) {
             showError('Error de validación', 'Debes agregar al menos un producto.');
-            setLoading(false);
             return;
         }
 
         const hasInvalidQuantity = details.some(detail => detail.quantity <= 0);
         if (hasInvalidQuantity) {
             showError('Error de validación', 'Todas las cantidades deben ser mayores a 0.');
-            setLoading(false);
             return;
         }
 
         const hasInvalidPrice = details.some(detail => detail.unit_price < 0);
         if (hasInvalidPrice) {
             showError('Error de validación', 'Todos los precios deben ser mayores o iguales a 0.');
-            setLoading(false);
             return;
         }
 
@@ -413,7 +473,6 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
             const amountPaid = parseFloat(formData.amount_paid) || 0;
             if (amountPaid < total) {
                 showError('Error de validación', 'El monto pagado debe ser mayor o igual al total.');
-                setLoading(false);
                 return;
             }
         }
@@ -422,20 +481,31 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
         if (formData.payment_type === 'credito') {
             if (!formData.credit_days) {
                 showError('Error de validación', 'Debes seleccionar los días de crédito.');
-                setLoading(false);
                 return;
             }
             if (!formData.installments || parseInt(formData.installments) < 1) {
                 showError('Error de validación', 'Debes especificar el número de cuotas.');
-                setLoading(false);
                 return;
             }
             const initialPayment = parseFloat(formData.initial_payment) || 0;
             if (initialPayment >= total) {
                 showError('Error de validación', 'El pago inicial debe ser menor al total de la venta.');
-                setLoading(false);
                 return;
             }
+        }
+
+        // Mostrar modal para seleccionar tamaño de comprobante
+        setShowPrintSizeModal(true);
+    };
+
+    const handlePrintSizeSelected = async (size: string) => {
+        setSelectedPrintSize(size);
+        setLoading(true);
+
+        if (!selectedCustomer) {
+            setLoading(false);
+            setShowPrintSizeModal(false);
+            return;
         }
 
         const submitData = {
@@ -459,12 +529,42 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
             })),
         };
 
-        router.post('/sales', submitData, {
-            onSuccess: () => {
-                showSuccess('¡Venta creada!', 'La venta ha sido registrada exitosamente.');
-            },
-            onError: (errors) => {
-                console.error('Validation errors:', errors);
+        try {
+            console.log('Enviando datos de venta...', submitData);
+            const response = await axios.post('/sales', submitData);
+            console.log('Respuesta recibida:', response.data);
+
+            if (response.data.success) {
+                const saleId = response.data.sale.id;
+                console.log('Venta creada con ID:', saleId);
+
+                setSaleData(response.data.sale);
+
+                // Cerrar modal de selección y resetear loading
+                setLoading(false);
+                setShowPrintSizeModal(false);
+
+                // Construir URL del PDF
+                const pdfUrlGenerated = `/sales/${saleId}/pdf?size=${size}&action=print`;
+                console.log('Mostrando PDF en iframe:', pdfUrlGenerated);
+
+                // Mostrar modal con iframe
+                setPdfUrl(pdfUrlGenerated);
+                setShowPdfModal(true);
+            } else {
+                console.error('Respuesta no exitosa:', response.data);
+                setLoading(false);
+                setShowPrintSizeModal(false);
+                showError('Error', 'No se pudo crear la venta.');
+            }
+        } catch (error: any) {
+            console.error('Error completo:', error);
+            console.error('Error response:', error.response);
+            setLoading(false);
+            setShowPrintSizeModal(false);
+
+            if (error.response?.data?.errors) {
+                const errors = error.response.data.errors;
                 setErrors(errors);
 
                 const errorMessages = Object.entries(errors).map(([field, messages]) => {
@@ -472,13 +572,11 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                     return `${field}: ${messageArray.join(', ')}`;
                 }).join('\n');
 
-                showError('Error al crear venta', errorMessages || 'Por favor, revisa los campos y vuelve a intentar.');
-                setLoading(false);
-            },
-            onFinish: () => {
-                setLoading(false);
-            },
-        });
+                showError('Error al crear venta', errorMessages);
+            } else {
+                showError('Error al crear venta', error.response?.data?.message || 'Por favor, revisa los campos y vuelve a intentar.');
+            }
+        }
     };
 
     const handleChange = (field: string, value: string) => {
@@ -711,128 +809,132 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* 1. Cliente */}
+                    {/* 1. Información General: Sucursal, Cliente y Fecha */}
                     <Card>
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <User className="h-5 w-5" />
-                                Cliente
-                            </CardTitle>
+                            <CardTitle>Información de la Venta</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {!selectedCustomer ? (
-                                <div className="space-y-2">
-                                    <Label htmlFor="customer-search">Buscar Cliente</Label>
-                                    <div className="relative">
-                                        <div className="relative">
-                                            <Input
-                                                ref={customerSearchRef}
-                                                id="customer-search"
-                                                placeholder="Buscar por nombre, DNI o RUC..."
-                                                value={customerSearch}
-                                                onChange={(e) => setCustomerSearch(e.target.value)}
-                                                autoComplete="off"
-                                                className="pr-10"
-                                            />
-                                            {customerLoading ? (
-                                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
-                                            ) : (
-                                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                            )}
-                                        </div>
-
-                                        {/* Dropdown de resultados */}
-                                        {showCustomerDropdown && customerResults.length > 0 && (
-                                            <div
-                                                ref={customerDropdownRef}
-                                                className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-[300px] overflow-auto"
-                                            >
-                                                {customerResults.map((customer) => (
-                                                    <button
-                                                        key={customer.id}
-                                                        type="button"
-                                                        onClick={() => handleSelectCustomer(customer)}
-                                                        className="w-full text-left px-4 py-3 hover:bg-accent cursor-pointer transition-colors border-b last:border-b-0"
-                                                    >
-                                                        <div className="flex items-start justify-between gap-3">
-                                                            <div className="flex-1 min-w-0">
-                                                                <p className="font-medium text-sm">{customer.name}</p>
-                                                                <p className="text-xs text-muted-foreground mt-0.5">
-                                                                    {customer.document_type}: {customer.document_number}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex-shrink-0">
-                                                                <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-1 rounded">
-                                                                    {customer.code}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {/* No se encontraron resultados */}
-                                        {showCustomerDropdown && customerSearch.length >= 2 && customerResults.length === 0 && !customerLoading && (
-                                            <div
-                                                ref={customerDropdownRef}
-                                                className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg p-4"
-                                            >
-                                                <div className="text-center">
-                                                    <p className="text-sm text-muted-foreground mb-3">
-                                                        No se encontró el cliente en la base de datos
-                                                    </p>
-                                                    {(customerSearch.length === 8 || customerSearch.length === 11) && /^\d+$/.test(customerSearch) ? (
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            onClick={() => handleQuickExternalSearch(customerSearch)}
-                                                        >
-                                                            <Search className="h-4 w-4 mr-2" />
-                                                            Buscar en {customerSearch.length === 8 ? 'RENIEC' : 'SUNAT'} ({customerSearch})
-                                                        </Button>
+                            <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
+                                {/* Cliente - 8 columnas */}
+                                <div className="lg:col-span-8">
+                                    {!selectedCustomer ? (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="customer-search">Cliente *</Label>
+                                            <div className="relative">
+                                                <div className="relative">
+                                                    <Input
+                                                        ref={customerSearchRef}
+                                                        id="customer-search"
+                                                        placeholder="Buscar por nombre, DNI o RUC..."
+                                                        value={customerSearch}
+                                                        onChange={(e) => setCustomerSearch(e.target.value)}
+                                                        autoComplete="off"
+                                                        className="pr-10"
+                                                    />
+                                                    {customerLoading ? (
+                                                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
                                                     ) : (
-                                                        <p className="text-xs text-amber-600">
-                                                            Ingresa un DNI (8 dígitos) o RUC (11 dígitos) válido para buscar
-                                                        </p>
+                                                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                                     )}
                                                 </div>
+
+                                                {/* Dropdown de resultados */}
+                                                {showCustomerDropdown && customerResults.length > 0 && (
+                                                    <div
+                                                        ref={customerDropdownRef}
+                                                        className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-[300px] overflow-auto"
+                                                    >
+                                                        {customerResults.map((customer) => (
+                                                            <button
+                                                                key={customer.id}
+                                                                type="button"
+                                                                onClick={() => handleSelectCustomer(customer)}
+                                                                className="w-full text-left px-4 py-3 hover:bg-accent cursor-pointer transition-colors border-b last:border-b-0"
+                                                            >
+                                                                <div className="flex items-start justify-between gap-3">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="font-medium text-sm">{customer.name}</p>
+                                                                        <p className="text-xs text-muted-foreground mt-0.5">
+                                                                            {customer.document_type}: {customer.document_number}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="flex-shrink-0">
+                                                                        <span className="text-xs font-mono bg-primary/10 text-primary px-2 py-1 rounded">
+                                                                            {customer.code}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+
+                                                {/* No se encontraron resultados */}
+                                                {showCustomerDropdown && customerSearch.length >= 2 && customerResults.length === 0 && !customerLoading && (
+                                                    <div
+                                                        ref={customerDropdownRef}
+                                                        className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg p-4"
+                                                    >
+                                                        <div className="text-center">
+                                                            <p className="text-sm text-muted-foreground mb-3">
+                                                                No se encontró el cliente en la base de datos
+                                                            </p>
+                                                            {(customerSearch.length === 8 || customerSearch.length === 11) && /^\d+$/.test(customerSearch) ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    onClick={() => handleQuickExternalSearch(customerSearch)}
+                                                                >
+                                                                    <Search className="h-4 w-4 mr-2" />
+                                                                    Buscar en {customerSearch.length === 8 ? 'RENIEC' : 'SUNAT'} ({customerSearch})
+                                                                </Button>
+                                                            ) : (
+                                                                <p className="text-xs text-amber-600">
+                                                                    Ingresa un DNI (8 dígitos) o RUC (11 dígitos) válido para buscar
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        Escribe mínimo 2 caracteres para buscar
-                                    </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Escribe mínimo 2 caracteres para buscar
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="customer-selected">Cliente *</Label>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 border rounded-lg px-3 py-2 bg-muted/50">
+                                                    <p className="text-sm font-semibold">
+                                                        {selectedCustomer.document_type}: {selectedCustomer.document_number} - {selectedCustomer.name}
+                                                    </p>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={handleClearCustomer}
+                                                >
+                                                    Cambiar
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="border rounded-lg p-4 bg-muted/50">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <h3 className="font-semibold">Cliente Seleccionado</h3>
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleClearCustomer}
-                                        >
-                                            Cambiar Cliente
-                                        </Button>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                                        <div>
-                                            <span className="text-muted-foreground">Código:</span>
-                                            <p className="font-semibold font-mono">{selectedCustomer.code}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground">Nombre:</span>
-                                            <p className="font-semibold">{selectedCustomer.name}</p>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted-foreground">Documento:</span>
-                                            <p className="font-mono">{selectedCustomer.document_type}: {selectedCustomer.document_number}</p>
-                                        </div>
-                                    </div>
+
+                                {/* Fecha - 2 columnas */}
+                                <div className="lg:col-span-2">
+                                    <Label htmlFor="sale_date">Fecha *</Label>
+                                    <Input
+                                        id="sale_date"
+                                        type="date"
+                                        value={formData.sale_date}
+                                        onChange={(e) => handleChange('sale_date', e.target.value)}
+                                    />
                                 </div>
-                            )}
+                            </div>
                         </CardContent>
                     </Card>
 
@@ -852,7 +954,26 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                         value={formData.document_type}
                                         onValueChange={(value) => {
                                             handleChange('document_type', value);
-                                            setFormData(prev => ({ ...prev, document_series_id: '' }));
+                                            // Auto-seleccionar la primera serie disponible
+                                            const seriesForType = value === 'boleta'
+                                                ? documentSeries.boleta
+                                                : value === 'factura'
+                                                ? documentSeries.factura
+                                                : [];
+
+                                            if (seriesForType.length > 0) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    document_type: value,
+                                                    document_series_id: seriesForType[0].id.toString()
+                                                }));
+                                            } else {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    document_type: value,
+                                                    document_series_id: ''
+                                                }));
+                                            }
                                         }}
                                     >
                                         <SelectTrigger id="document_type">
@@ -866,24 +987,12 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                     </Select>
                                 </div>
 
-                                {formData.document_type !== 'nota_venta' && (
+                                {formData.document_type !== 'nota_venta' && availableSeries.length > 0 && (
                                     <div>
                                         <Label htmlFor="document_series_id">Serie</Label>
-                                        <Select
-                                            value={formData.document_series_id}
-                                            onValueChange={(value) => handleChange('document_series_id', value)}
-                                        >
-                                            <SelectTrigger id="document_series_id">
-                                                <SelectValue placeholder="Selecciona una serie" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {availableSeries.map((serie) => (
-                                                    <SelectItem key={serie.id} value={serie.id.toString()}>
-                                                        {serie.series}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <div className="h-10 px-3 py-2 rounded-md border bg-muted flex items-center font-semibold">
+                                            {availableSeries.find(s => s.id.toString() === formData.document_series_id)?.series || 'N/A'}
+                                        </div>
                                     </div>
                                 )}
 
@@ -895,37 +1004,6 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                     <p className="text-xs text-muted-foreground mt-1">
                                         Se generará automáticamente
                                     </p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="branch_id">Sucursal *</Label>
-                                    <Select
-                                        value={formData.branch_id}
-                                        onValueChange={(value) => handleChange('branch_id', value)}
-                                    >
-                                        <SelectTrigger id="branch_id">
-                                            <SelectValue placeholder="Selecciona una sucursal" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {branches.map((branch) => (
-                                                <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                    {branch.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div>
-                                    <Label htmlFor="sale_date">Fecha de Venta *</Label>
-                                    <Input
-                                        id="sale_date"
-                                        type="date"
-                                        value={formData.sale_date}
-                                        onChange={(e) => handleChange('sale_date', e.target.value)}
-                                    />
                                 </div>
                             </div>
                         </CardContent>
@@ -1368,9 +1446,9 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                                 {formatCurrency(subtotal)}
                                             </span>
                                         </div>
-                                        {formData.document_type === 'factura' && (
+                                        {formData.document_type !== 'nota_venta' && tax > 0 && (
                                             <div className="flex justify-between text-base">
-                                                <span className="text-muted-foreground">IGV (18%):</span>
+                                                <span className="text-muted-foreground">IGV:</span>
                                                 <span className="font-semibold">
                                                     {formatCurrency(tax)}
                                                 </span>
@@ -1694,6 +1772,96 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                         )}
                                     </Button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Modal de selección de tamaño */}
+                {showPrintSizeModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                            {loading ? (
+                                <div className="text-center py-8">
+                                    <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+                                    <h3 className="text-lg font-semibold mb-2">Procesando Venta...</h3>
+                                    <p className="text-muted-foreground">Por favor espera un momento</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <h2 className="text-xl font-bold mb-4">Seleccionar Tamaño de Comprobante</h2>
+                                    <p className="text-muted-foreground mb-6">Elige el formato para imprimir el comprobante</p>
+
+                                    <div className="space-y-3">
+                                        <button
+                                            onClick={() => handlePrintSizeSelected('a4')}
+                                            className="w-full p-4 border-2 rounded-lg hover:border-primary hover:bg-primary/5 transition-all text-left"
+                                        >
+                                            <div className="font-semibold">Tamaño A4</div>
+                                            <div className="text-sm text-muted-foreground">Formato carta (21 x 29.7 cm)</div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => handlePrintSizeSelected('80mm')}
+                                            className="w-full p-4 border-2 rounded-lg hover:border-primary hover:bg-primary/5 transition-all text-left"
+                                        >
+                                            <div className="font-semibold">Ticket 80mm</div>
+                                            <div className="text-sm text-muted-foreground">Impresora térmica (8 cm de ancho)</div>
+                                        </button>
+
+                                        <button
+                                            onClick={() => setShowPrintSizeModal(false)}
+                                            className="w-full p-3 border rounded-lg hover:bg-muted transition-all"
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Modal con PDF en iframe */}
+                {showPdfModal && (
+                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-lg w-full max-w-6xl h-[90vh] flex flex-col">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-4 border-b">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle className="h-5 w-5 text-green-600" />
+                                    <h2 className="text-lg font-semibold">Venta Registrada - Comprobante</h2>
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => window.print()}
+                                    >
+                                        <Printer className="h-4 w-4 mr-2" />
+                                        Imprimir
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                            setShowPdfModal(false);
+                                            window.location.href = '/sales/create';
+                                        }}
+                                    >
+                                        <Plus className="h-4 w-4 mr-2" />
+                                        Nueva Venta
+                                    </Button>
+                                </div>
+                            </div>
+
+                            {/* PDF iframe */}
+                            <div className="flex-1 overflow-hidden">
+                                <iframe
+                                    src={pdfUrl}
+                                    className="w-full h-full border-0"
+                                    title="Comprobante de Venta"
+                                />
                             </div>
                         </div>
                     </div>

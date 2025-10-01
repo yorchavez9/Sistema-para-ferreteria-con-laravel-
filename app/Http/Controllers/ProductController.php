@@ -15,7 +15,8 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'brand']);
+        $query = Product::with(['category', 'brand'])
+            ->withSum('inventory', 'current_stock');
 
         // Búsqueda en tiempo real
         if ($request->search) {
@@ -70,10 +71,10 @@ class ProductController extends Controller
             'total_products' => Product::count(),
             'active_products' => Product::where('is_active', true)->count(),
             'low_stock' => Product::whereHas('inventory', function ($q) {
-                $q->whereRaw('quantity <= min_stock');
+                $q->whereColumn('current_stock', '<=', 'min_stock');
             })->count(),
             'out_of_stock' => Product::whereHas('inventory', function ($q) {
-                $q->where('quantity', 0);
+                $q->where('current_stock', 0);
             })->count(),
         ];
 
@@ -119,6 +120,7 @@ class ProductController extends Controller
             'sale_price' => 'required|numeric|min:0',
             'min_stock' => 'required|integer|min:0',
             'max_stock' => 'required|integer|min:0',
+            'igv_percentage' => 'required|numeric|min:0|max:100',
             'description' => 'nullable|string',
             'technical_specifications' => 'nullable|string',
         ]);
@@ -172,6 +174,7 @@ class ProductController extends Controller
             'sale_price' => 'required|numeric|min:0',
             'min_stock' => 'required|integer|min:0',
             'max_stock' => 'required|integer|min:0',
+            'igv_percentage' => 'required|numeric|min:0|max:100',
             'description' => 'nullable|string',
             'technical_specifications' => 'nullable|string',
         ]);
