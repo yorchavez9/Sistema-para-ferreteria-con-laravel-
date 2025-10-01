@@ -15,6 +15,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Dashboard
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // API Routes
+    Route::get('api/products/search', [ProductController::class, 'search'])->name('api.products.search');
+    Route::get('api/customers/search', [\App\Http\Controllers\CustomerController::class, 'searchApi'])->name('api.customers.search');
+
     // Productos
     Route::resource('products', ProductController::class)->middleware([
         'permission:product-list|product-create|product-edit|product-delete'
@@ -48,14 +52,35 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Proveedores
     Route::resource('suppliers', \App\Http\Controllers\SupplierController::class);
 
-    // Clientes
+    // Clientes - Rutas personalizadas ANTES del resource
+    Route::post('customers/search-by-document', [\App\Http\Controllers\CustomerController::class, 'searchByDocument'])->name('customers.search-by-document');
+    Route::post('customers/consultar-documento', [\App\Http\Controllers\CustomerController::class, 'consultarDocumento'])->name('customers.consultar-documento');
+    Route::post('customers/quick-store', [\App\Http\Controllers\CustomerController::class, 'quickStore'])->name('customers.quick-store');
+
+    // Clientes - Resource routes
     Route::resource('customers', \App\Http\Controllers\CustomerController::class);
 
     // Órdenes de Compra - Rutas personalizadas ANTES del resource
     Route::post('purchase-orders/{purchaseOrder}/receive', [\App\Http\Controllers\PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
+    Route::get('purchase-orders/{purchaseOrder}/pdf', [\App\Http\Controllers\PurchaseOrderController::class, 'pdf'])->name('purchase-orders.pdf');
 
     // Órdenes de Compra - Resource routes
     Route::resource('purchase-orders', \App\Http\Controllers\PurchaseOrderController::class);
+
+    // Ventas - Rutas personalizadas ANTES del resource
+    Route::post('sales/{sale}/cancel', [\App\Http\Controllers\SaleController::class, 'cancel'])->name('sales.cancel');
+    Route::get('sales/{sale}/pdf', [\App\Http\Controllers\SaleController::class, 'pdf'])->name('sales.pdf');
+
+    // Ventas - Resource routes
+    Route::resource('sales', \App\Http\Controllers\SaleController::class);
+
+    // Pagos de Ventas a Crédito
+    Route::get('payments', [\App\Http\Controllers\PaymentController::class, 'index'])->name('payments.index');
+    Route::get('payments/sales/{sale}', [\App\Http\Controllers\PaymentController::class, 'show'])->name('payments.show');
+    Route::get('payments/{payment}/pay', [\App\Http\Controllers\PaymentController::class, 'showPayForm'])->name('payments.pay.form');
+    Route::post('payments/{payment}/pay', [\App\Http\Controllers\PaymentController::class, 'pay'])->name('payments.pay');
+    Route::get('payments/{payment}/voucher', [\App\Http\Controllers\PaymentController::class, 'voucher'])->name('payments.voucher');
+    Route::post('payments/update-overdue', [\App\Http\Controllers\PaymentController::class, 'updateOverdueStatuses'])->name('payments.update-overdue');
 });
 
 require __DIR__.'/settings.php';

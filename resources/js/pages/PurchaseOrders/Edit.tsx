@@ -28,7 +28,7 @@ import ProductSelectorModal from '@/components/ProductSelectorModal';
 
 interface Supplier {
     id: number;
-    name: string;
+    business_name: string;
 }
 
 interface Branch {
@@ -40,46 +40,77 @@ interface Product {
     id: number;
     name: string;
     code: string;
-    category: {
+    category?: {
         name: string;
     };
-    brand: {
+    brand?: {
         name: string;
     };
 }
 
 interface OrderDetail {
+    id?: number;
     product_id: number;
     product?: Product;
     quantity: number;
     unit_price: number;
 }
 
-interface PurchaseOrdersCreateProps {
+interface PurchaseOrder {
+    id: number;
+    series: string;
+    correlativo: string;
+    order_number: string;
+    supplier_id: number;
+    branch_id: number;
+    order_date: string;
+    expected_date: string | null;
+    discount: string;
+    notes: string | null;
+    details: Array<{
+        id: number;
+        product_id: number;
+        quantity_ordered: number;
+        unit_price: string;
+        product: Product;
+    }>;
+}
+
+interface PurchaseOrdersEditProps {
+    order: PurchaseOrder;
     suppliers: Supplier[];
     branches: Branch[];
     products: Product[];
 }
 
-const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Órdenes de Compra', href: '/purchase-orders' },
-    { title: 'Crear', href: '/purchase-orders/create' },
-];
+export default function PurchaseOrdersEdit({ order, suppliers, branches, products }: PurchaseOrdersEditProps) {
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Dashboard', href: '/dashboard' },
+        { title: 'Órdenes de Compra', href: '/purchase-orders' },
+        { title: `Editar ${order.order_number}`, href: '#' },
+    ];
 
-export default function PurchaseOrdersCreate({ suppliers, branches, products }: PurchaseOrdersCreateProps) {
     const [formData, setFormData] = useState({
-        series: '',
-        correlativo: '',
-        supplier_id: '',
-        branch_id: '',
-        order_date: new Date().toISOString().split('T')[0],
-        expected_date: '',
-        discount: '',
-        notes: '',
+        series: order.series,
+        correlativo: order.correlativo,
+        supplier_id: order.supplier_id.toString(),
+        branch_id: order.branch_id.toString(),
+        order_date: order.order_date.split('T')[0], // Convertir de ISO a YYYY-MM-DD
+        expected_date: order.expected_date ? order.expected_date.split('T')[0] : '',
+        discount: order.discount?.toString() || '',
+        notes: order.notes || '',
     });
 
-    const [details, setDetails] = useState<OrderDetail[]>([]);
+    const [details, setDetails] = useState<OrderDetail[]>(
+        order.details.map(detail => ({
+            id: detail.id,
+            product_id: detail.product_id,
+            product: detail.product,
+            quantity: detail.quantity_ordered,
+            unit_price: parseFloat(detail.unit_price),
+        }))
+    );
+
     const [selectedProductId, setSelectedProductId] = useState('');
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
@@ -97,8 +128,8 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
         return products.filter(product =>
             product.name.toLowerCase().includes(search) ||
             product.code.toLowerCase().includes(search) ||
-            product.category.name.toLowerCase().includes(search) ||
-            product.brand.name.toLowerCase().includes(search)
+            product.category?.name.toLowerCase().includes(search) ||
+            product.brand?.name.toLowerCase().includes(search)
         ).slice(0, 10); // Limit to 10 results
     }, [products, searchTerm]);
 
@@ -130,41 +161,23 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
         return details.reduce((sum, detail) => sum + (detail.quantity * detail.unit_price), 0);
     }, [details]);
 
-    const igv = useMemo(() => {
-        return subtotal * 0.18;
-    }, [subtotal]);
-
-    const discount = useMemo(() => {
-        return parseFloat(formData.discount) || 0;
-    }, [formData.discount]);
-
-    const total = useMemo(() => {
-        return subtotal + igv - discount;
-    }, [subtotal, igv, discount]);
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-PE', {
-            style: 'currency',
-            currency: 'PEN',
-            minimumFractionDigits: 2,
-        }).format(amount);
-    };
+    const tax = useMemo(() => subtotal * 0.18, [subtotal]);
+    const discount = useMemo(() => parseFloat(formData.discount) || 0, [formData.discount]);
+    const total = useMemo(() => subtotal + tax - discount, [subtotal, tax, discount]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setLoading(true);
-        setErrors({});
 
-        // Validation
         if (details.length === 0) {
-            showError('Error de validación', 'Debe agregar al menos un producto a la orden.');
-            setLoading(false);
+            showError('Error de validación', 'Debes agregar al menos un producto.');
             return;
         }
 
-        const hasInvalidQuantity = details.some(detail => detail.quantity < 1);
+        setLoading(true);
+
+        const hasInvalidQuantity = details.some(detail => detail.quantity <= 0);
         if (hasInvalidQuantity) {
-            showError('Error de validación', 'Todas las cantidades deben ser mayores o iguales a 1.');
+            showError('Error de validación', 'Todas las cantidades deben ser mayores a 0.');
             setLoading(false);
             return;
         }
@@ -194,21 +207,20 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
 
         console.log('Submitting data:', submitData);
 
-        router.post('/purchase-orders', submitData, {
+        router.put(`/purchase-orders/${order.id}`, submitData, {
             onSuccess: () => {
-                showSuccess('¡Orden creada!', 'La orden de compra ha sido creada exitosamente.');
+                showSuccess('¡Orden actualizada!', 'La orden de compra ha sido actualizada exitosamente.');
             },
             onError: (errors) => {
                 console.error('Validation errors:', errors);
                 setErrors(errors);
 
-                // Mostrar errores específicos
                 const errorMessages = Object.entries(errors).map(([field, messages]) => {
                     const messageArray = Array.isArray(messages) ? messages : [messages];
                     return `${field}: ${messageArray.join(', ')}`;
                 }).join('\n');
 
-                showError('Error al crear orden', errorMessages || 'Por favor, revisa los campos y vuelve a intentar.');
+                showError('Error al actualizar orden', errorMessages || 'Por favor, revisa los campos y vuelve a intentar.');
                 setLoading(false);
             },
             onFinish: () => {
@@ -309,23 +321,23 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Crear Orden de Compra" />
+            <Head title={`Editar Orden ${order.order_number}`} />
 
             <div className="space-y-6 p-6">
                 {/* Header */}
-                <div className="flex items-center gap-4">
-                    <Link href="/purchase-orders">
-                        <Button variant="outline" size="sm">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Volver
-                        </Button>
-                    </Link>
+                <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold">Crear Orden de Compra</h1>
-                        <p className="text-muted-foreground">
-                            Registra una nueva orden de compra de productos
+                        <h1 className="text-3xl font-bold">Editar Orden de Compra</h1>
+                        <p className="text-muted-foreground mt-1">
+                            Orden: {order.order_number}
                         </p>
                     </div>
+                    <Button variant="outline" asChild>
+                        <Link href="/purchase-orders">
+                            <ArrowLeft className="h-4 w-4 mr-2" />
+                            Volver
+                        </Link>
+                    </Button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -350,6 +362,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                         placeholder="O001"
                                         className="font-mono"
                                         maxLength={20}
+                                        disabled
                                     />
                                     {errors.series && (
                                         <p className="text-xs text-destructive mt-1">{errors.series}</p>
@@ -367,6 +380,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                         placeholder="1"
                                         className="font-mono"
                                         maxLength={20}
+                                        disabled
                                     />
                                     {errors.correlativo && (
                                         <p className="text-xs text-destructive mt-1">{errors.correlativo}</p>
@@ -376,45 +390,45 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                 <div className="md:col-span-2">
                                     <Label>Número Completo</Label>
                                     <div className="h-10 px-3 py-2 rounded-md border bg-muted flex items-center font-mono text-lg font-semibold">
-                                        {formData.series && formData.correlativo
-                                            ? `${formData.series}-${formData.correlativo}`
-                                            : 'Ingrese serie y correlativo'}
+                                        {order.order_number}
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">
-                                        Los números se ingresan manualmente en órdenes de compra
+                                        El número de orden no puede modificarse
                                     </p>
                                 </div>
+                            </div>
 
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <Label htmlFor="supplier_id">Proveedor *</Label>
+                                    <Label htmlFor="supplier">Proveedor *</Label>
                                     <Select
                                         value={formData.supplier_id}
                                         onValueChange={(value) => handleChange('supplier_id', value)}
                                     >
-                                        <SelectTrigger className={errors.supplier_id ? 'border-red-500' : ''}>
-                                            <SelectValue placeholder="Seleccionar proveedor" />
+                                        <SelectTrigger id="supplier">
+                                            <SelectValue placeholder="Selecciona un proveedor" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {suppliers.map((supplier) => (
                                                 <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                                                    {supplier.name}
+                                                    {supplier.business_name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
                                     {errors.supplier_id && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.supplier_id}</p>
+                                        <p className="text-xs text-destructive mt-1">{errors.supplier_id}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="branch_id">Sucursal *</Label>
+                                    <Label htmlFor="branch">Sucursal *</Label>
                                     <Select
                                         value={formData.branch_id}
                                         onValueChange={(value) => handleChange('branch_id', value)}
                                     >
-                                        <SelectTrigger className={errors.branch_id ? 'border-red-500' : ''}>
-                                            <SelectValue placeholder="Seleccionar sucursal" />
+                                        <SelectTrigger id="branch">
+                                            <SelectValue placeholder="Selecciona una sucursal" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {branches.map((branch) => (
@@ -425,48 +439,40 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                         </SelectContent>
                                     </Select>
                                     {errors.branch_id && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.branch_id}</p>
+                                        <p className="text-xs text-destructive mt-1">{errors.branch_id}</p>
                                     )}
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
-                                    <Label htmlFor="order_date" className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4" />
-                                        Fecha de Orden *
-                                    </Label>
+                                    <Label htmlFor="order_date">Fecha de Orden *</Label>
                                     <Input
                                         id="order_date"
                                         type="date"
                                         value={formData.order_date}
                                         onChange={(e) => handleChange('order_date', e.target.value)}
-                                        className={errors.order_date ? 'border-red-500' : ''}
                                     />
                                     {errors.order_date && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.order_date}</p>
+                                        <p className="text-xs text-destructive mt-1">{errors.order_date}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="expected_date" className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4" />
-                                        Fecha Esperada de Entrega
-                                    </Label>
+                                    <Label htmlFor="expected_date">Fecha Esperada</Label>
                                     <Input
                                         id="expected_date"
                                         type="date"
                                         value={formData.expected_date}
                                         onChange={(e) => handleChange('expected_date', e.target.value)}
-                                        className={errors.expected_date ? 'border-red-500' : ''}
                                     />
                                     {errors.expected_date && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.expected_date}</p>
+                                        <p className="text-xs text-destructive mt-1">{errors.expected_date}</p>
                                     )}
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="discount">Descuento (PEN)</Label>
+                                    <Label htmlFor="discount">Descuento (S/)</Label>
                                     <Input
                                         id="discount"
                                         type="number"
@@ -475,26 +481,24 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                         value={formData.discount}
                                         onChange={(e) => handleChange('discount', e.target.value)}
                                         placeholder="0.00"
-                                        className={errors.discount ? 'border-red-500' : ''}
                                     />
                                     {errors.discount && (
-                                        <p className="text-sm text-red-500 mt-1">{errors.discount}</p>
+                                        <p className="text-xs text-destructive mt-1">{errors.discount}</p>
                                     )}
                                 </div>
                             </div>
 
                             <div>
-                                <Label htmlFor="notes">Notas / Observaciones</Label>
+                                <Label htmlFor="notes">Notas</Label>
                                 <Textarea
                                     id="notes"
                                     value={formData.notes}
                                     onChange={(e) => handleChange('notes', e.target.value)}
-                                    placeholder="Notas adicionales sobre la orden..."
-                                    className={errors.notes ? 'border-red-500' : ''}
+                                    placeholder="Observaciones adicionales..."
                                     rows={3}
                                 />
                                 {errors.notes && (
-                                    <p className="text-sm text-red-500 mt-1">{errors.notes}</p>
+                                    <p className="text-xs text-destructive mt-1">{errors.notes}</p>
                                 )}
                             </div>
                         </CardContent>
@@ -563,7 +567,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                                     <div className="flex-1 min-w-0">
                                                         <p className="font-medium text-sm">{product.name}</p>
                                                         <p className="text-xs text-muted-foreground mt-0.5">
-                                                            {product.category.name} • {product.brand.name}
+                                                            {product.category?.name || 'Sin categoría'} • {product.brand?.name || 'Sin marca'}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -585,9 +589,9 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                 )}
                             </div>
 
-                            {/* Products Table */}
+                            {/* Lista de Productos */}
                             {details.length > 0 ? (
-                                <div className="rounded-md border">
+                                <div className="border rounded-lg overflow-hidden">
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -596,7 +600,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                                 <TableHead>Categoría</TableHead>
                                                 <TableHead>Marca</TableHead>
                                                 <TableHead className="w-32">Cantidad</TableHead>
-                                                <TableHead className="w-40">Precio Unit.</TableHead>
+                                                <TableHead className="w-32">Precio Unit.</TableHead>
                                                 <TableHead className="text-right">Subtotal</TableHead>
                                                 <TableHead className="w-20"></TableHead>
                                             </TableRow>
@@ -604,18 +608,10 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                         <TableBody>
                                             {details.map((detail, index) => (
                                                 <TableRow key={index}>
-                                                    <TableCell className="font-mono text-sm">
-                                                        {detail.product?.code}
-                                                    </TableCell>
-                                                    <TableCell className="font-medium">
-                                                        {detail.product?.name}
-                                                    </TableCell>
-                                                    <TableCell className="text-sm text-muted-foreground">
-                                                        {detail.product?.category.name}
-                                                    </TableCell>
-                                                    <TableCell className="text-sm text-muted-foreground">
-                                                        {detail.product?.brand.name}
-                                                    </TableCell>
+                                                    <TableCell className="font-mono">{detail.product?.code || '-'}</TableCell>
+                                                    <TableCell>{detail.product?.name || '-'}</TableCell>
+                                                    <TableCell>{detail.product?.category?.name || '-'}</TableCell>
+                                                    <TableCell>{detail.product?.brand?.name || '-'}</TableCell>
                                                     <TableCell>
                                                         <Input
                                                             type="number"
@@ -632,12 +628,11 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                                             min="0"
                                                             value={detail.unit_price}
                                                             onChange={(e) => updateDetail(index, 'unit_price', e.target.value)}
-                                                            placeholder="0.00"
                                                             className="w-full"
                                                         />
                                                     </TableCell>
-                                                    <TableCell className="text-right font-medium">
-                                                        {formatCurrency(detail.quantity * detail.unit_price)}
+                                                    <TableCell className="text-right font-semibold">
+                                                        S/ {(detail.quantity * detail.unit_price).toFixed(2)}
                                                     </TableCell>
                                                     <TableCell>
                                                         <Button
@@ -646,7 +641,7 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                                             size="sm"
                                                             onClick={() => removeProduct(index)}
                                                         >
-                                                            <Trash2 className="h-4 w-4 text-red-500" />
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>
@@ -655,36 +650,32 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                                     </Table>
                                 </div>
                             ) : (
-                                <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                                    <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                                    <p className="text-muted-foreground mb-2">No hay productos agregados</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Selecciona un producto del menú desplegable y haz clic en "Agregar"
-                                    </p>
+                                <div className="text-center py-8 text-muted-foreground">
+                                    No hay productos agregados
                                 </div>
                             )}
 
-                            {/* Totals */}
+                            {/* Totales */}
                             {details.length > 0 && (
                                 <div className="flex justify-end">
-                                    <div className="w-80 space-y-2">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">Subtotal:</span>
-                                            <span className="font-medium">{formatCurrency(subtotal)}</span>
+                                    <div className="w-full max-w-sm space-y-2">
+                                        <div className="flex justify-between text-base">
+                                            <span>Subtotal:</span>
+                                            <span className="font-semibold">S/ {subtotal.toFixed(2)}</span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">IGV (18%):</span>
-                                            <span className="font-medium">{formatCurrency(igv)}</span>
+                                        <div className="flex justify-between text-base">
+                                            <span>IGV (18%):</span>
+                                            <span className="font-semibold">S/ {tax.toFixed(2)}</span>
                                         </div>
                                         {discount > 0 && (
-                                            <div className="flex justify-between text-sm">
-                                                <span className="text-muted-foreground">Descuento:</span>
-                                                <span className="font-medium text-red-500">-{formatCurrency(discount)}</span>
+                                            <div className="flex justify-between text-base">
+                                                <span>Descuento:</span>
+                                                <span className="font-semibold text-destructive">- S/ {discount.toFixed(2)}</span>
                                             </div>
                                         )}
-                                        <div className="flex justify-between text-lg font-bold border-t pt-2">
+                                        <div className="flex justify-between text-xl font-bold border-t pt-2">
                                             <span>Total:</span>
-                                            <span>{formatCurrency(total)}</span>
+                                            <span>S/ {total.toFixed(2)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -692,22 +683,14 @@ export default function PurchaseOrdersCreate({ suppliers, branches, products }: 
                         </CardContent>
                     </Card>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-4">
-                        <Button type="submit" disabled={loading || details.length === 0}>
-                            <ShoppingCart className="mr-2 h-4 w-4" />
-                            {loading ? 'Creando...' : 'Crear Orden de Compra'}
+                    {/* Botones de Acción */}
+                    <div className="flex justify-end gap-4">
+                        <Button type="button" variant="outline" asChild>
+                            <Link href="/purchase-orders">Cancelar</Link>
                         </Button>
-                        <Link href="/purchase-orders">
-                            <Button type="button" variant="outline">
-                                Cancelar
-                            </Button>
-                        </Link>
-                        {details.length === 0 && (
-                            <span className="text-sm text-muted-foreground">
-                                Agrega al menos un producto para crear la orden
-                            </span>
-                        )}
+                        <Button type="submit" disabled={loading || details.length === 0}>
+                            {loading ? 'Guardando...' : 'Actualizar Orden'}
+                        </Button>
                     </div>
                 </form>
 

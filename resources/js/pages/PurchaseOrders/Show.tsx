@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/table';
 import { ArrowLeft, Edit, Trash2, Printer, CheckCircle } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
+import PdfPreviewModal from '@/components/PdfPreviewModal';
 import Swal from 'sweetalert2';
 
 interface Product {
@@ -79,6 +81,8 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Show({ order }: Props) {
+    const [showPdfModal, setShowPdfModal] = useState(false);
+
     const statusColors = {
         pendiente: 'bg-yellow-500',
         parcial: 'bg-blue-500',
@@ -173,12 +177,22 @@ export default function Show({ order }: Props) {
                                 </Button>
                             </>
                         )}
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={() => setShowPdfModal(true)}>
                             <Printer className="h-4 w-4 mr-2" />
                             Imprimir
                         </Button>
                     </div>
                 </div>
+
+                {/* Modal de PDF */}
+                <PdfPreviewModal
+                    open={showPdfModal}
+                    onClose={() => setShowPdfModal(false)}
+                    documentId={order.id}
+                    documentNumber={order.order_number}
+                    documentType="purchase-order"
+                    documentLabel="Orden de Compra"
+                />
 
                 {/* Información General */}
                 <Card>

@@ -26,7 +26,8 @@ import {
     ShoppingCart,
     Receipt,
     Calculator,
-    CreditCard
+    CreditCard,
+    DollarSign
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -96,6 +97,11 @@ const mainNavItems: NavItem[] = [
                 title: 'Facturas',
                 href: '/sales',
                 icon: Receipt,
+            },
+            {
+                title: 'Gestión de Pagos',
+                href: '/payments',
+                icon: DollarSign,
             },
             {
                 title: 'Cotizaciones',

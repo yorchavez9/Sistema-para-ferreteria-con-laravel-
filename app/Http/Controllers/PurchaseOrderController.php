@@ -9,40 +9,87 @@ use App\Models\Product;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
-use Barryvdh\DomPDF\Facade\Pdf;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 
 class PurchaseOrderController extends Controller
 {
     public function index(Request $request)
     {
-        $orders = PurchaseOrder::with(['supplier', 'branch', 'user'])
-            ->when($request->search, function ($query, $search) {
-                $query->where('order_number', 'like', "%{$search}%")
-                    ->orWhereHas('supplier', function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%");
-                    });
-            })
-            ->when($request->status, function ($query, $status) {
-                $query->where('status', $status);
-            })
-            ->when($request->supplier_id, function ($query, $supplierId) {
-                $query->where('supplier_id', $supplierId);
-            })
-            ->when($request->branch_id, function ($query, $branchId) {
-                $query->where('branch_id', $branchId);
-            })
-            ->orderBy('order_date', 'desc')
-            ->paginate(15)
-            ->withQueryString();
+        $query = PurchaseOrder::with(['supplier', 'branch', 'user']);
 
-        $suppliers = Supplier::active()->get();
-        $branches = Branch::active()->get();
+        // Búsqueda en tiempo real
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhere('series', 'like', "%{$search}%")
+                    ->orWhere('correlativo', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                        $supplierQuery->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhere('total', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtros
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->supplier_id) {
+            $query->where('supplier_id', $request->supplier_id);
+        }
+
+        if ($request->branch_id) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        if ($request->date_from) {
+            $query->whereDate('order_date', '>=', $request->date_from);
+        }
+
+        if ($request->date_to) {
+            $query->whereDate('order_date', '<=', $request->date_to);
+        }
+
+        // Ordenamiento dinámico
+        $sortField = $request->get('sort_field', 'order_date');
+        $sortDirection = $request->get('sort_direction', 'desc');
+
+        if ($sortField === 'supplier') {
+            $query->join('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
+                ->orderBy('suppliers.name', $sortDirection)
+                ->select('purchase_orders.*');
+        } elseif ($sortField === 'branch') {
+            $query->join('branches', 'purchase_orders.branch_id', '=', 'branches.id')
+                ->orderBy('branches.name', $sortDirection)
+                ->select('purchase_orders.*');
+        } else {
+            $query->orderBy($sortField, $sortDirection);
+        }
+
+        $perPage = $request->get('per_page', 15);
+        $orders = $query->paginate($perPage)->withQueryString();
+
+        // Estadísticas
+        $stats = [
+            'total_orders' => PurchaseOrder::count(),
+            'total_amount' => PurchaseOrder::where('status', '!=', 'cancelado')->sum('total'),
+            'pending' => PurchaseOrder::where('status', 'pendiente')->count(),
+            'received' => PurchaseOrder::where('status', 'recibido')->count(),
+            'partial' => PurchaseOrder::where('status', 'parcial')->count(),
+            'pending_amount' => PurchaseOrder::whereIn('status', ['pendiente', 'parcial'])->sum('total'),
+        ];
+
+        $suppliers = Supplier::active()->orderBy('name')->get(['id', 'name']);
+        $branches = Branch::active()->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('PurchaseOrders/Index', [
             'orders' => $orders,
+            'stats' => $stats,
             'suppliers' => $suppliers,
             'branches' => $branches,
-            'filters' => $request->only(['search', 'status', 'supplier_id', 'branch_id']),
+            'filters' => $request->only(['search', 'status', 'supplier_id', 'branch_id', 'date_from', 'date_to', 'sort_field', 'sort_direction', 'per_page']),
         ]);
     }
 
@@ -127,7 +174,7 @@ class PurchaseOrderController extends Controller
             return back()->withErrors(['error' => 'Solo se pueden editar órdenes pendientes.']);
         }
 
-        $purchaseOrder->load(['details.product']);
+        $purchaseOrder->load(['details.product.category', 'details.product.brand']);
         $suppliers = Supplier::active()->get();
         $branches = Branch::active()->get();
         $products = Product::active()->with(['category', 'brand'])->get();
@@ -224,6 +271,68 @@ class PurchaseOrderController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Error al recibir la orden: ' . $e->getMessage()]);
+        }
+    }
+
+    public function pdf(PurchaseOrder $purchaseOrder, Request $request)
+    {
+        $purchaseOrder->load(['supplier', 'branch', 'user', 'details.product.category', 'details.product.brand']);
+
+        $size = $request->query('size', 'a4'); // a4, a5, 80mm, 50mm
+
+        // Configuración según el tamaño
+        $config = $this->getPdfConfig($size);
+
+        $pdf = Pdf::loadView('pdf.purchase-order', [
+            'order' => $purchaseOrder,
+            'config' => $config,
+        ])
+        ->setPaper($config['paper'], $config['orientation']);
+
+        // Si es preview, devolver el PDF inline para mostrarlo en el navegador
+        if ($request->query('preview') === 'true') {
+            return $pdf->stream("orden-compra-{$purchaseOrder->order_number}.pdf");
+        }
+
+        // Si no es preview, descargar el PDF
+        return $pdf->download("orden-compra-{$purchaseOrder->order_number}.pdf");
+    }
+
+    private function getPdfConfig($size)
+    {
+        switch ($size) {
+            case 'a5':
+                return [
+                    'paper' => 'a5',
+                    'orientation' => 'portrait',
+                    'width' => '148mm',
+                    'height' => '210mm',
+                    'fontSize' => '9px',
+                ];
+            case '80mm':
+                return [
+                    'paper' => [0, 0, 226.77, 566.93], // 80mm ancho
+                    'orientation' => 'portrait',
+                    'width' => '80mm',
+                    'height' => '200mm',
+                    'fontSize' => '8px',
+                ];
+            case '50mm':
+                return [
+                    'paper' => [0, 0, 141.73, 566.93], // 50mm ancho
+                    'orientation' => 'portrait',
+                    'width' => '50mm',
+                    'height' => '200mm',
+                    'fontSize' => '7px',
+                ];
+            default: // a4
+                return [
+                    'paper' => 'a4',
+                    'orientation' => 'portrait',
+                    'width' => '210mm',
+                    'height' => '297mm',
+                    'fontSize' => '10px',
+                ];
         }
     }
 }

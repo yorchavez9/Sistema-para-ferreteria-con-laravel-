@@ -15,28 +15,77 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $products = Product::with(['category', 'brand'])
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%")
-                      ->orWhere('barcode', 'like', "%{$search}%");
-            })
-            ->when($request->category_id, function ($query, $categoryId) {
-                $query->where('category_id', $categoryId);
-            })
-            ->when($request->brand_id, function ($query, $brandId) {
-                $query->where('brand_id', $brandId);
-            })
-            ->paginate(15);
+        $query = Product::with(['category', 'brand']);
 
-        $categories = Category::active()->get();
-        $brands = Brand::active()->get();
+        // Búsqueda en tiempo real
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%")
+                    ->orWhereHas('category', function ($categoryQuery) use ($search) {
+                        $categoryQuery->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('brand', function ($brandQuery) use ($search) {
+                        $brandQuery->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Filtros
+        if ($request->category_id) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        if ($request->brand_id) {
+            $query->where('brand_id', $request->brand_id);
+        }
+
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        // Ordenamiento dinámico
+        $sortField = $request->get('sort_field', 'name');
+        $sortDirection = $request->get('sort_direction', 'asc');
+
+        if ($sortField === 'category') {
+            $query->join('categories', 'products.category_id', '=', 'categories.id')
+                ->orderBy('categories.name', $sortDirection)
+                ->select('products.*');
+        } elseif ($sortField === 'brand') {
+            $query->join('brands', 'products.brand_id', '=', 'brands.id')
+                ->orderBy('brands.name', $sortDirection)
+                ->select('products.*');
+        } else {
+            $query->orderBy($sortField, $sortDirection);
+        }
+
+        $perPage = $request->get('per_page', 15);
+        $products = $query->paginate($perPage)->withQueryString();
+
+        // Estadísticas
+        $stats = [
+            'total_products' => Product::count(),
+            'active_products' => Product::where('is_active', true)->count(),
+            'low_stock' => Product::whereHas('inventory', function ($q) {
+                $q->whereRaw('quantity <= min_stock');
+            })->count(),
+            'out_of_stock' => Product::whereHas('inventory', function ($q) {
+                $q->where('quantity', 0);
+            })->count(),
+        ];
+
+        $categories = Category::active()->orderBy('name')->get(['id', 'name']);
+        $brands = Brand::active()->orderBy('name')->get(['id', 'name']);
 
         return Inertia::render('Products/Index', [
             'products' => $products,
+            'stats' => $stats,
             'categories' => $categories,
             'brands' => $brands,
-            'filters' => $request->only(['search', 'category_id', 'brand_id']),
+            'filters' => $request->only(['search', 'category_id', 'brand_id', 'is_active', 'sort_field', 'sort_direction', 'per_page']),
         ]);
     }
 
@@ -175,5 +224,42 @@ class ProductController extends Controller
 
         return redirect()->route('products.index')
             ->with('success', 'Producto eliminado permanentemente.');
+    }
+
+    /**
+     * Search products for API (used in sales and purchase orders)
+     */
+    public function search(Request $request)
+    {
+        $search = $request->input('search', '');
+        $branchId = $request->input('branch_id');
+
+        $products = Product::with(['category', 'brand'])
+            ->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('barcode', 'like', "%{$search}%");
+            })
+            ->where('is_active', true)
+            ->limit(10)
+            ->get()
+            ->map(function ($product) use ($branchId) {
+                // Agregar stock de la sucursal si se proporciona
+                if ($branchId) {
+                    $inventory = $product->inventory()->where('branch_id', $branchId)->first();
+                    $product->stock = $inventory ? $inventory->current_stock : 0;
+                } else {
+                    $product->stock = $product->inventory()->sum('current_stock');
+                }
+
+                // Renombrar unit_of_measure a unit para consistencia
+                $product->unit = $product->unit_of_measure;
+
+                return $product;
+            });
+
+        return response()->json([
+            'products' => $products
+        ]);
     }
 }
