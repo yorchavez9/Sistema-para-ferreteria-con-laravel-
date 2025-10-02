@@ -10,18 +10,49 @@ class BranchController extends Controller
 {
     public function index(Request $request)
     {
-        $branches = Branch::withCount(['products', 'inventories'])
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%")
-                      ->orWhere('address', 'like', "%{$search}%");
-            })
-            ->orderBy('name')
-            ->paginate(15);
+        $query = Branch::withCount(['products', 'inventories']);
+
+        // Búsqueda
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('address', 'like', "%{$search}%")
+                  ->orWhere('manager_name', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtro de estado
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        // Filtro de tipo (principal o secundaria)
+        if ($request->has('is_main')) {
+            $query->where('is_main', $request->is_main);
+        }
+
+        // Ordenamiento
+        $sortField = $request->get('sort_field', 'name');
+        $sortDirection = $request->get('sort_direction', 'asc');
+        $query->orderBy($sortField, $sortDirection);
+
+        $perPage = $request->get('per_page', 15);
+        $branches = $query->paginate($perPage)->withQueryString();
+
+        // Estadísticas
+        $stats = [
+            'total_branches' => Branch::count(),
+            'active_branches' => Branch::where('is_active', true)->count(),
+            'main_branches' => Branch::where('is_main', true)->count(),
+            'with_inventory' => Branch::has('inventories')->count(),
+        ];
 
         return Inertia::render('Branches/Index', [
             'branches' => $branches,
-            'filters' => $request->only(['search']),
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'is_active', 'is_main', 'sort_field', 'sort_direction', 'per_page']),
         ]);
     }
 

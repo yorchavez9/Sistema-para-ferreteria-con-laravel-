@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,10 +18,19 @@ class AuthenticatedSessionController extends Controller
     /**
      * Show the login page.
      */
-    public function create(Request $request): Response
+    public function create(Request $request): Response|RedirectResponse
     {
+        // Verificar si hay usuarios en la base de datos
+        $hasUsers = User::count() > 0;
+
+        // Si no hay usuarios, redirigir al registro (configuración inicial)
+        if (!$hasUsers) {
+            return redirect()->route('register');
+        }
+
         return Inertia::render('auth/login', [
             'canResetPassword' => Route::has('password.request'),
+            'canRegister' => false, // Deshabilitar el registro cuando ya hay usuarios
             'status' => $request->session()->get('status'),
         ]);
     }

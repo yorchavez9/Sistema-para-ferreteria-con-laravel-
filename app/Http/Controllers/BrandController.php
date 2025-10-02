@@ -13,16 +13,43 @@ class BrandController extends Controller
      */
     public function index(Request $request)
     {
-        $brands = Brand::withCount('products')
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->paginate(15);
+        $query = Brand::withCount('products');
+
+        // Búsqueda
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtro de estado
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        // Ordenamiento
+        $sortField = $request->get('sort_field', 'name');
+        $sortDirection = $request->get('sort_direction', 'asc');
+        $query->orderBy($sortField, $sortDirection);
+
+        $perPage = $request->get('per_page', 15);
+        $brands = $query->paginate($perPage)->withQueryString();
+
+        // Estadísticas
+        $stats = [
+            'total_brands' => Brand::count(),
+            'active_brands' => Brand::where('is_active', true)->count(),
+            'with_products' => Brand::has('products')->count(),
+            'without_products' => Brand::doesntHave('products')->count(),
+        ];
 
         return Inertia::render('Brands/Index', [
             'brands' => $brands,
-            'filters' => $request->only(['search']),
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'is_active', 'sort_field', 'sort_direction', 'per_page']),
         ]);
     }
 

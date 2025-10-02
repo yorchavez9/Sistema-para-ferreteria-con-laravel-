@@ -3,8 +3,9 @@ import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
     TableBody,
@@ -26,12 +27,17 @@ import {
     Pencil,
     Trash2,
     Package,
-    ChevronUp,
-    ChevronDown,
-    Minus,
     AlertTriangle,
     CheckCircle,
-    XCircle
+    XCircle,
+    Search,
+    Filter,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
+    Minus,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { useDebouncedCallback } from 'use-debounce';
@@ -55,6 +61,7 @@ interface Product {
     sale_price: number;
     min_stock: number;
     total_stock?: number;
+    inventory_sum_current_stock?: number;
     is_active: boolean;
 }
 
@@ -73,6 +80,8 @@ interface ProductsIndexProps {
         last_page: number;
         per_page: number;
         total: number;
+        from: number;
+        to: number;
     };
     stats: Stats;
     categories: Array<{ id: number; name: string }>;
@@ -94,45 +103,81 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function ProductsIndex({ products, stats, categories, brands, filters }: ProductsIndexProps) {
-    const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-    const [sortField, setSortField] = useState(filters.sort_field || 'name');
-    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>((filters.sort_direction as 'asc' | 'desc') || 'asc');
-
+    const [searchTerm, setSearchTerm] = useState(filters.search || '');
+    const [showFilters, setShowFilters] = useState(false);
     const [filterData, setFilterData] = useState({
         category_id: filters.category_id || '',
         brand_id: filters.brand_id || '',
         is_active: filters.is_active || '',
-        per_page: filters.per_page || 15,
+        per_page: filters.per_page?.toString() || '15',
     });
+    const [sortField, setSortField] = useState(filters.sort_field || 'name');
+    const [sortDirection, setSortDirection] = useState(filters.sort_direction || 'asc');
+    const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
-    const toggleRowExpansion = (id: number) => {
-        const newExpanded = new Set(expandedRows);
-        if (newExpanded.has(id)) {
-            newExpanded.delete(id);
-        } else {
-            newExpanded.add(id);
-        }
-        setExpandedRows(newExpanded);
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('es-PE', {
+            style: 'currency',
+            currency: 'PEN',
+        }).format(amount);
     };
 
+    // Búsqueda en tiempo real con debounce
     const debouncedSearch = useDebouncedCallback((value: string) => {
-        router.get('/products', {
-            ...filterData,
+        const params: any = {
             search: value,
             sort_field: sortField,
             sort_direction: sortDirection,
-        }, {
+            per_page: filterData.per_page,
+        };
+
+        // Solo agregar filtros si tienen valor
+        if (filterData.category_id) params.category_id = filterData.category_id;
+        if (filterData.brand_id) params.brand_id = filterData.brand_id;
+        if (filterData.is_active) params.is_active = filterData.is_active;
+
+        router.get('/products', params, {
             preserveState: true,
             preserveScroll: true,
         });
     }, 500);
 
-    const handleFilterChange = (key: string, value: any) => {
-        const newFilters = { ...filterData, [key]: value };
-        setFilterData(newFilters);
+    const handleSearchChange = (value: string) => {
+        setSearchTerm(value);
+        debouncedSearch(value);
+    };
+
+    const handleFilter = () => {
+        const params: any = {
+            search: searchTerm,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+            per_page: filterData.per_page,
+        };
+
+        // Solo agregar filtros si tienen valor
+        if (filterData.category_id) params.category_id = filterData.category_id;
+        if (filterData.brand_id) params.brand_id = filterData.brand_id;
+        if (filterData.is_active) params.is_active = filterData.is_active;
+
+        router.get('/products', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const clearFilters = () => {
+        const clearedFilters = {
+            category_id: '',
+            brand_id: '',
+            is_active: '',
+            per_page: '15',
+        };
+        setFilterData(clearedFilters);
+        setSearchTerm('');
+
         router.get('/products', {
-            ...newFilters,
-            search: filters.search,
+            per_page: '15',
             sort_field: sortField,
             sort_direction: sortDirection,
         }, {
@@ -145,25 +190,74 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
         const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
         setSortField(field);
         setSortDirection(newDirection);
-        router.get('/products', {
-            ...filterData,
-            search: filters.search,
+
+        const params: any = {
+            search: searchTerm,
             sort_field: field,
             sort_direction: newDirection,
-        }, {
+            per_page: filterData.per_page,
+        };
+
+        // Solo agregar filtros si tienen valor
+        if (filterData.category_id) params.category_id = filterData.category_id;
+        if (filterData.brand_id) params.brand_id = filterData.brand_id;
+        if (filterData.is_active) params.is_active = filterData.is_active;
+
+        router.get('/products', params, {
             preserveState: true,
             preserveScroll: true,
         });
     };
 
-    const clearFilters = () => {
-        setFilterData({
-            category_id: '',
-            brand_id: '',
-            is_active: '',
-            per_page: 15,
+    const handlePerPageChange = (value: string) => {
+        setFilterData({ ...filterData, per_page: value });
+
+        const params: any = {
+            search: searchTerm,
+            per_page: value,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+        };
+
+        // Solo agregar filtros si tienen valor
+        if (filterData.category_id) params.category_id = filterData.category_id;
+        if (filterData.brand_id) params.brand_id = filterData.brand_id;
+        if (filterData.is_active) params.is_active = filterData.is_active;
+
+        router.get('/products', params, {
+            preserveState: true,
+            preserveScroll: true,
         });
-        router.get('/products');
+    };
+
+    const handlePageChange = (page: number) => {
+        const params: any = {
+            page: page,
+            search: searchTerm,
+            per_page: filterData.per_page,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+        };
+
+        // Solo agregar filtros si tienen valor
+        if (filterData.category_id) params.category_id = filterData.category_id;
+        if (filterData.brand_id) params.brand_id = filterData.brand_id;
+        if (filterData.is_active) params.is_active = filterData.is_active;
+
+        router.get('/products', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const toggleRowExpansion = (productId: number) => {
+        const newExpanded = new Set(expandedRows);
+        if (newExpanded.has(productId)) {
+            newExpanded.delete(productId);
+        } else {
+            newExpanded.add(productId);
+        }
+        setExpandedRows(newExpanded);
     };
 
     const handleDelete = (product: Product) => {
@@ -187,38 +281,33 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
         });
     };
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-PE', {
-            style: 'currency',
-            currency: 'PEN',
-        }).format(amount);
-    };
-
     const SortIcon = ({ field }: { field: string }) => {
-        if (sortField !== field) return null;
-        return sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />;
+        if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-3 w-3 ml-1" />
+            : <ArrowDown className="h-3 w-3 ml-1" />;
     };
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Productos" />
 
-            <div className="space-y-4 p-4">
+            <div className="space-y-6 p-6">
                 {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-2xl font-bold">Productos</h1>
-                        <p className="text-xs text-muted-foreground">Gestiona el catálogo de productos</p>
+                        <h1 className="text-3xl font-bold">Productos</h1>
+                        <p className="text-muted-foreground">Gestiona el catálogo de productos</p>
                     </div>
                     <Link href="/products/create">
-                        <Button size="sm">
+                        <Button>
                             <Plus className="mr-2 h-4 w-4" />
                             Nuevo Producto
                         </Button>
                     </Link>
                 </div>
 
-                {/* Stats */}
+                {/* Estadísticas */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <Card>
                         <CardContent className="py-3">
@@ -231,34 +320,37 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
                             </div>
                         </CardContent>
                     </Card>
+
                     <Card>
                         <CardContent className="py-3">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-xs text-muted-foreground uppercase font-medium">Activos</p>
-                                    <p className="text-base font-bold mt-0.5 text-green-600">{stats.active_products}</p>
+                                    <p className="text-base font-bold text-green-600 mt-0.5">{stats.active_products}</p>
                                 </div>
                                 <CheckCircle className="h-5 w-5 text-green-600 opacity-80" />
                             </div>
                         </CardContent>
                     </Card>
+
                     <Card>
                         <CardContent className="py-3">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-xs text-muted-foreground uppercase font-medium">Stock Bajo</p>
-                                    <p className="text-base font-bold mt-0.5 text-amber-600">{stats.low_stock}</p>
+                                    <p className="text-base font-bold text-amber-600 mt-0.5">{stats.low_stock}</p>
                                 </div>
                                 <AlertTriangle className="h-5 w-5 text-amber-600 opacity-80" />
                             </div>
                         </CardContent>
                     </Card>
+
                     <Card>
                         <CardContent className="py-3">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-xs text-muted-foreground uppercase font-medium">Sin Stock</p>
-                                    <p className="text-base font-bold mt-0.5 text-red-600">{stats.out_of_stock}</p>
+                                    <p className="text-base font-bold text-red-600 mt-0.5">{stats.out_of_stock}</p>
                                 </div>
                                 <XCircle className="h-5 w-5 text-red-600 opacity-80" />
                             </div>
@@ -266,222 +358,473 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
                     </Card>
                 </div>
 
-                {/* Filters */}
+                {/* Barra de Búsqueda */}
                 <Card>
-                    <CardContent className="py-3">
-                        <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                            <div className="md:col-span-2">
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    placeholder="Buscar..."
-                                    defaultValue={filters.search}
-                                    onChange={(e) => debouncedSearch(e.target.value)}
-                                    className="h-9"
+                                    type="text"
+                                    placeholder="Buscar por nombre, código o código de barras..."
+                                    value={searchTerm}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
+                                    className="pl-10"
                                 />
                             </div>
-                            <Select value={filterData.category_id || "all"} onValueChange={(value) => handleFilterChange('category_id', value === "all" ? '' : value)}>
-                                <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Categoría" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Todas</SelectItem>
-                                    {categories.map((category) => (
-                                        <SelectItem key={category.id} value={category.id.toString()}>
-                                            {category.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Select value={filterData.brand_id || "all"} onValueChange={(value) => handleFilterChange('brand_id', value === "all" ? '' : value)}>
-                                <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Marca" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Todas</SelectItem>
-                                    {brands.map((brand) => (
-                                        <SelectItem key={brand.id} value={brand.id.toString()}>
-                                            {brand.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <Select value={filterData.is_active || "all"} onValueChange={(value) => handleFilterChange('is_active', value === "all" ? '' : value)}>
-                                <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Estado" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">Todos</SelectItem>
-                                    <SelectItem value="1">Activos</SelectItem>
-                                    <SelectItem value="0">Inactivos</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <Button variant="outline" size="sm" onClick={clearFilters} className="h-9">
-                                Limpiar
+                            <Button onClick={() => setShowFilters(!showFilters)} variant="outline">
+                                <Filter className="h-4 w-4 mr-2" />
+                                {showFilters ? 'Ocultar Filtros' : 'Filtros Avanzados'}
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Table */}
-                <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="md:hidden w-10"></TableHead>
-                                <TableHead className="text-xs cursor-pointer" onClick={() => handleSort('code')}>
-                                    <div className="flex items-center gap-1">
-                                        Código <SortIcon field="code" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="text-xs cursor-pointer" onClick={() => handleSort('name')}>
-                                    <div className="flex items-center gap-1">
-                                        Producto <SortIcon field="name" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="hidden md:table-cell text-xs cursor-pointer" onClick={() => handleSort('category')}>
-                                    <div className="flex items-center gap-1">
-                                        Categoría <SortIcon field="category" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="hidden md:table-cell text-xs cursor-pointer" onClick={() => handleSort('brand')}>
-                                    <div className="flex items-center gap-1">
-                                        Marca <SortIcon field="brand" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="hidden lg:table-cell text-xs cursor-pointer" onClick={() => handleSort('purchase_price')}>
-                                    <div className="flex items-center gap-1">
-                                        P. Compra <SortIcon field="purchase_price" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="hidden md:table-cell text-xs cursor-pointer" onClick={() => handleSort('sale_price')}>
-                                    <div className="flex items-center gap-1">
-                                        P. Venta <SortIcon field="sale_price" />
-                                    </div>
-                                </TableHead>
-                                <TableHead className="hidden lg:table-cell text-xs text-center">Stock</TableHead>
-                                <TableHead className="text-xs">Estado</TableHead>
-                                <TableHead className="w-24 text-xs">Acciones</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {products.data.length > 0 ? (
-                                products.data.map((product) => {
-                                    const isExpanded = expandedRows.has(product.id);
-                                    return (
-                                        <Fragment key={product.id}>
-                                            <TableRow>
-                                                <TableCell className="md:hidden w-10 p-2">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => toggleRowExpansion(product.id)}
-                                                        className="h-8 w-8 p-0"
-                                                    >
-                                                        {isExpanded ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                                    </Button>
-                                                </TableCell>
-                                                <TableCell className="font-mono text-xs">{product.code}</TableCell>
-                                                <TableCell className="font-medium text-sm">{product.name}</TableCell>
-                                                <TableCell className="hidden md:table-cell text-xs">{product.category.name}</TableCell>
-                                                <TableCell className="hidden md:table-cell text-xs">{product.brand.name}</TableCell>
-                                                <TableCell className="hidden lg:table-cell font-semibold text-sm">{formatCurrency(product.purchase_price)}</TableCell>
-                                                <TableCell className="hidden md:table-cell font-semibold text-sm text-green-600">{formatCurrency(product.sale_price)}</TableCell>
-                                                <TableCell className="hidden lg:table-cell text-center">
-                                                    <span className="font-mono font-semibold">{(product as any).inventory_sum_current_stock || 0}</span>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge className={product.is_active ? 'bg-green-100 text-green-800 border-green-300 text-xs' : 'bg-red-100 text-red-800 border-red-300 text-xs'}>
-                                                        {product.is_active ? 'Activo' : 'Inactivo'}
-                                                    </Badge>
-                                                </TableCell>
-                                                <TableCell className="p-2">
-                                                    <div className="flex gap-1">
-                                                        <Link href={`/products/${product.id}`}>
-                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                                <Eye className="h-4 w-4" />
-                                                            </Button>
-                                                        </Link>
-                                                        <Link href={`/products/${product.id}/edit`}>
-                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                                <Pencil className="h-4 w-4" />
-                                                            </Button>
-                                                        </Link>
+                {/* Filtros Avanzados */}
+                {showFilters && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Filtros Avanzados</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <Label htmlFor="category">Categoría</Label>
+                                    <Select
+                                        value={filterData.category_id || 'all'}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, category_id: value === 'all' ? '' : value })
+                                        }
+                                    >
+                                        <SelectTrigger id="category">
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Todas</SelectItem>
+                                            {categories.map((category) => (
+                                                <SelectItem key={category.id} value={category.id.toString()}>
+                                                    {category.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="brand">Marca</Label>
+                                    <Select
+                                        value={filterData.brand_id || 'all'}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, brand_id: value === 'all' ? '' : value })
+                                        }
+                                    >
+                                        <SelectTrigger id="brand">
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Todas</SelectItem>
+                                            {brands.map((brand) => (
+                                                <SelectItem key={brand.id} value={brand.id.toString()}>
+                                                    {brand.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="status">Estado</Label>
+                                    <Select
+                                        value={filterData.is_active || 'all'}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, is_active: value === 'all' ? '' : value })
+                                        }
+                                    >
+                                        <SelectTrigger id="status">
+                                            <SelectValue placeholder="Todos" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">Todos</SelectItem>
+                                            <SelectItem value="1">Activos</SelectItem>
+                                            <SelectItem value="0">Inactivos</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="flex items-end gap-2">
+                                    <Button onClick={handleFilter} className="flex-1">
+                                        Aplicar
+                                    </Button>
+                                    <Button onClick={clearFilters} variant="outline" className="flex-1">
+                                        Limpiar
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
+                {/* Tabla de Productos */}
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Lista de Productos</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Label className="text-xs text-muted-foreground">Mostrar:</Label>
+                            <Select value={filterData.per_page} onValueChange={handlePerPageChange}>
+                                <SelectTrigger className="w-[80px] h-8">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="15">15</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    {/* Columna + (solo móvil) */}
+                                    <TableHead className="md:hidden w-10"></TableHead>
+
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('code')}
+                                    >
+                                        <div className="flex items-center">
+                                            Código
+                                            <SortIcon field="code" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('name')}
+                                    >
+                                        <div className="flex items-center">
+                                            Producto
+                                            <SortIcon field="name" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead
+                                        className="hidden md:table-cell cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('category')}
+                                    >
+                                        <div className="flex items-center">
+                                            Categoría
+                                            <SortIcon field="category" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead
+                                        className="hidden md:table-cell cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('brand')}
+                                    >
+                                        <div className="flex items-center">
+                                            Marca
+                                            <SortIcon field="brand" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead
+                                        className="hidden md:table-cell cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('sale_price')}
+                                    >
+                                        <div className="flex items-center">
+                                            P. Venta
+                                            <SortIcon field="sale_price" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="hidden md:table-cell text-center">Stock</TableHead>
+                                    <TableHead
+                                        className="hidden md:table-cell cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('is_active')}
+                                    >
+                                        <div className="flex items-center">
+                                            Estado
+                                            <SortIcon field="is_active" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="hidden md:table-cell text-center">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {products.data.length > 0 ? (
+                                    products.data.map((product) => {
+                                        const isExpanded = expandedRows.has(product.id);
+                                        return (
+                                            <Fragment key={product.id}>
+                                                <TableRow>
+                                                    {/* Botón expandir (solo móvil) */}
+                                                    <TableCell className="md:hidden w-10 p-2">
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
+                                                            onClick={() => toggleRowExpansion(product.id)}
                                                             className="h-8 w-8 p-0"
-                                                            onClick={() => handleDelete(product)}
                                                         >
-                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                            {isExpanded ? (
+                                                                <Minus className="h-4 w-4" />
+                                                            ) : (
+                                                                <Plus className="h-4 w-4" />
+                                                            )}
                                                         </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
+                                                    </TableCell>
 
-                                            {isExpanded && (
-                                                <TableRow className="md:hidden bg-muted/50">
-                                                    <TableCell colSpan={5} className="p-4">
-                                                        <div className="space-y-2 text-xs">
-                                                            <div>
-                                                                <span className="text-muted-foreground">Categoría:</span>
-                                                                <p className="font-medium">{product.category.name}</p>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-muted-foreground">Marca:</span>
-                                                                <p className="font-medium">{product.brand.name}</p>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-muted-foreground">Precio de Venta:</span>
-                                                                <p className="font-semibold">{formatCurrency(product.sale_price)}</p>
-                                                            </div>
-                                                            <div>
-                                                                <span className="text-muted-foreground">Unidad:</span>
-                                                                <p className="font-medium">{product.unit_of_measure}</p>
+                                                    {/* Código */}
+                                                    <TableCell className="font-mono text-sm">{product.code}</TableCell>
+
+                                                    {/* Producto */}
+                                                    <TableCell>
+                                                        <div>
+                                                            <p className="text-sm font-medium">{product.name}</p>
+                                                            {/* Info móvil condensada */}
+                                                            <div className="md:hidden mt-1 space-y-1">
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {product.category.name} - {product.brand.name}
+                                                                </p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="font-semibold text-sm text-green-600">
+                                                                        {formatCurrency(product.sale_price)}
+                                                                    </span>
+                                                                    <Badge
+                                                                        variant="outline"
+                                                                        className={`text-xs ${
+                                                                            product.is_active
+                                                                                ? 'bg-green-100 text-green-800 border-green-300'
+                                                                                : 'bg-red-100 text-red-800 border-red-300'
+                                                                        }`}
+                                                                    >
+                                                                        {product.is_active ? 'Activo' : 'Inactivo'}
+                                                                    </Badge>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </Fragment>
-                                    );
-                                })
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={8} className="text-center py-6 text-sm text-muted-foreground">
-                                        No se encontraron productos.
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
 
-                {/* Pagination */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <p>Mostrando {products.data.length} de {products.total} productos</p>
-                    <div className="flex gap-2">
-                        {products.links.map((link, index) => (
-                            link.url ? (
-                                <Link key={index} href={link.url} preserveState preserveScroll>
+                                                    {/* Categoría (oculto en móvil) */}
+                                                    <TableCell className="hidden md:table-cell">
+                                                        <span className="text-sm">{product.category.name}</span>
+                                                    </TableCell>
+
+                                                    {/* Marca (oculto en móvil) */}
+                                                    <TableCell className="hidden md:table-cell">
+                                                        <span className="text-sm">{product.brand.name}</span>
+                                                    </TableCell>
+
+                                                    {/* Precio Venta (oculto en móvil) */}
+                                                    <TableCell className="hidden md:table-cell">
+                                                        <span className="font-semibold text-sm text-green-600">
+                                                            {formatCurrency(product.sale_price)}
+                                                        </span>
+                                                    </TableCell>
+
+                                                    {/* Stock (oculto en móvil) */}
+                                                    <TableCell className="hidden md:table-cell text-center">
+                                                        <span className="font-mono font-semibold">
+                                                            {product.inventory_sum_current_stock || 0}
+                                                        </span>
+                                                    </TableCell>
+
+                                                    {/* Estado (oculto en móvil) */}
+                                                    <TableCell className="hidden md:table-cell">
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={`text-xs ${
+                                                                product.is_active
+                                                                    ? 'bg-green-100 text-green-800 border-green-300'
+                                                                    : 'bg-red-100 text-red-800 border-red-300'
+                                                            }`}
+                                                        >
+                                                            {product.is_active ? 'Activo' : 'Inactivo'}
+                                                        </Badge>
+                                                    </TableCell>
+
+                                                    {/* Acciones (solo desktop) */}
+                                                    <TableCell className="hidden md:table-cell text-center">
+                                                        <div className="flex justify-center gap-1">
+                                                            <Link href={`/products/${product.id}`}>
+                                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                    <Eye className="h-4 w-4" />
+                                                                </Button>
+                                                            </Link>
+                                                            <Link href={`/products/${product.id}/edit`}>
+                                                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                            </Link>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => handleDelete(product)}
+                                                                className="h-8 w-8 p-0"
+                                                            >
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+
+                                                {/* Fila expandida (solo móvil) */}
+                                                {isExpanded && (
+                                                    <TableRow className="md:hidden bg-muted/50">
+                                                        <TableCell colSpan={3} className="p-4">
+                                                            <div className="space-y-3 text-sm">
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <div>
+                                                                        <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
+                                                                            Código Barras
+                                                                        </p>
+                                                                        <p className="font-medium text-sm font-mono">
+                                                                            {product.barcode || 'N/A'}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
+                                                                            Unidad
+                                                                        </p>
+                                                                        <p className="font-medium text-sm">
+                                                                            {product.unit_of_measure}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <div>
+                                                                        <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
+                                                                            Precio Compra
+                                                                        </p>
+                                                                        <p className="font-semibold text-sm">
+                                                                            {formatCurrency(product.purchase_price)}
+                                                                        </p>
+                                                                    </div>
+
+                                                                    <div>
+                                                                        <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
+                                                                            Stock Actual
+                                                                        </p>
+                                                                        <p className="font-bold text-base">
+                                                                            {product.inventory_sum_current_stock || 0}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Acciones en móvil */}
+                                                                <div className="pt-2 border-t">
+                                                                    <p className="text-xs text-muted-foreground uppercase font-medium mb-2">
+                                                                        Acciones
+                                                                    </p>
+                                                                    <div className="flex gap-2">
+                                                                        <Link href={`/products/${product.id}`} className="flex-1">
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                className="w-full h-9"
+                                                                            >
+                                                                                <Eye className="h-4 w-4 mr-2" />
+                                                                                Ver Detalles
+                                                                            </Button>
+                                                                        </Link>
+                                                                        <Link href={`/products/${product.id}/edit`} className="flex-1">
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                className="w-full h-9"
+                                                                            >
+                                                                                <Pencil className="h-4 w-4 mr-2" />
+                                                                                Editar
+                                                                            </Button>
+                                                                        </Link>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="destructive"
+                                                                            onClick={() => handleDelete(product)}
+                                                                            className="h-9"
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </Fragment>
+                                        );
+                                    })
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="text-center py-8">
+                                            <Package className="h-10 w-10 mx-auto text-muted-foreground opacity-50" />
+                                            <p className="mt-2 text-muted-foreground">No se encontraron productos</p>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+
+                        {/* Paginación */}
+                        {products.data.length > 0 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                                <div className="text-sm text-muted-foreground">
+                                    Mostrando <span className="font-medium">{products.from}</span> a{' '}
+                                    <span className="font-medium">{products.to}</span> de{' '}
+                                    <span className="font-medium">{products.total}</span> resultados
+                                </div>
+                                <div className="flex items-center gap-2">
                                     <Button
-                                        variant={link.active ? "default" : "outline"}
+                                        variant="outline"
                                         size="sm"
-                                        className="h-8"
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                </Link>
-                            ) : (
-                                <Button
-                                    key={index}
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8"
-                                    disabled
-                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                />
-                            )
-                        ))}
-                    </div>
-                </div>
+                                        onClick={() => handlePageChange(products.current_page - 1)}
+                                        disabled={products.current_page === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Anterior
+                                    </Button>
+
+                                    <div className="hidden sm:flex items-center gap-1">
+                                        {Array.from({ length: Math.min(5, products.last_page) }, (_, i) => {
+                                            let pageNum;
+                                            if (products.last_page <= 5) {
+                                                pageNum = i + 1;
+                                            } else if (products.current_page <= 3) {
+                                                pageNum = i + 1;
+                                            } else if (products.current_page >= products.last_page - 2) {
+                                                pageNum = products.last_page - 4 + i;
+                                            } else {
+                                                pageNum = products.current_page - 2 + i;
+                                            }
+
+                                            return (
+                                                <Button
+                                                    key={pageNum}
+                                                    variant={products.current_page === pageNum ? 'default' : 'outline'}
+                                                    size="sm"
+                                                    onClick={() => handlePageChange(pageNum)}
+                                                    className="w-8 h-8 p-0"
+                                                >
+                                                    {pageNum}
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePageChange(products.current_page + 1)}
+                                        disabled={products.current_page === products.last_page}
+                                    >
+                                        Siguiente
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </AppLayout>
     );

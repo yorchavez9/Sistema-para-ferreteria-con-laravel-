@@ -14,18 +14,61 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        $categories = Category::with(['parent', 'children'])
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                      ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->paginate(15);
+        $query = Category::with(['parent'])
+            ->withCount(['children', 'products']);
+
+        // Búsqueda
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('description', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtro de estado
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        // Filtro de tipo (principal o subcategoría)
+        if ($request->type === 'main') {
+            $query->whereNull('parent_id');
+        } elseif ($request->type === 'sub') {
+            $query->whereNotNull('parent_id');
+        }
+
+        // Ordenamiento
+        $sortField = $request->get('sort_field', 'sort_order');
+        $sortDirection = $request->get('sort_direction', 'asc');
+
+        if ($sortField === 'parent') {
+            $query->leftJoin('categories as parent_categories', 'categories.parent_id', '=', 'parent_categories.id')
+                ->orderBy('parent_categories.name', $sortDirection)
+                ->select('categories.*');
+        } else {
+            $query->orderBy($sortField, $sortDirection);
+            if ($sortField !== 'name') {
+                $query->orderBy('name', 'asc');
+            }
+        }
+
+        $perPage = $request->get('per_page', 15);
+        $categories = $query->paginate($perPage)->withQueryString();
+
+        // Estadísticas
+        $stats = [
+            'total_categories' => Category::count(),
+            'active_categories' => Category::where('is_active', true)->count(),
+            'main_categories' => Category::whereNull('parent_id')->count(),
+            'subcategories' => Category::whereNotNull('parent_id')->count(),
+        ];
 
         return Inertia::render('Categories/Index', [
             'categories' => $categories,
-            'filters' => $request->only(['search']),
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'is_active', 'type', 'sort_field', 'sort_direction', 'per_page']),
         ]);
     }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Inventory;
 use App\Models\Product;
 use App\Models\Branch;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -107,14 +108,26 @@ class InventoryController extends Controller
      */
     public function processAdjustment(Request $request)
     {
+        $settings = Setting::get();
+
+        // Validar stock negativo según configuración
+        $minStock = $settings->allow_negative_stock ? 'integer' : 'integer|min:0';
+
         $request->validate([
             'inventory_id' => 'required|exists:inventory,id',
-            'new_stock' => 'required|integer|min:0',
+            'new_stock' => "required|{$minStock}",
             'reason' => 'required|string|max:255',
         ]);
 
         $inventory = Inventory::findOrFail($request->inventory_id);
         $oldStock = $inventory->current_stock;
+
+        // Si no se permite stock negativo, validar
+        if (!$settings->allow_negative_stock && $request->new_stock < 0) {
+            return back()->withErrors([
+                'new_stock' => 'No se permite stock negativo según la configuración del sistema.'
+            ]);
+        }
 
         $inventory->update([
             'current_stock' => $request->new_stock,

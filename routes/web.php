@@ -6,9 +6,11 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\RoleController;
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    return redirect()->route('login');
 })->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -86,6 +88,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('payments/{payment}/pay', [\App\Http\Controllers\PaymentController::class, 'pay'])->name('payments.pay');
     Route::get('payments/{payment}/voucher', [\App\Http\Controllers\PaymentController::class, 'voucher'])->name('payments.voucher');
     Route::post('payments/update-overdue', [\App\Http\Controllers\PaymentController::class, 'updateOverdueStatuses'])->name('payments.update-overdue');
+
+    // Usuarios
+    Route::resource('users', UserController::class)->middleware([
+        'permission:user-list|user-create|user-edit|user-delete'
+    ]);
+
+    // Roles y Permisos
+    Route::resource('roles', RoleController::class)->middleware([
+        'permission:role-list|role-create|role-edit|role-delete'
+    ]);
 });
 
 require __DIR__.'/settings.php';

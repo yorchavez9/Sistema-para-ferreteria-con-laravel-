@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use App\Models\Setting;
 
 class SaleController extends Controller
 {
@@ -140,15 +141,20 @@ class SaleController extends Controller
 
     public function store(Request $request)
     {
+        $settings = Setting::get();
+
+        // Validar si se requiere cliente para la venta
+        $customerRule = $settings->require_customer_for_sale ? 'required' : 'nullable';
+
         $validated = $request->validate([
             'document_type' => 'required|in:boleta,factura,nota_venta',
             'document_series_id' => 'nullable|exists:document_series,id', // Serie seleccionada (opcional)
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => $customerRule . '|exists:customers,id',
             'branch_id' => 'required|exists:branches,id',
             'sale_date' => 'required|date',
             'payment_method' => 'required|in:efectivo,tarjeta,transferencia,yape,plin,credito',
             'payment_type' => 'required|in:contado,credito',
-            'credit_days' => 'nullable|required_if:payment_type,credito|integer|in:15,30,45,60',
+            'credit_days' => 'nullable|required_if:payment_type,credito|integer|min:1|max:' . $settings->days_for_credit_sale,
             'installments' => 'nullable|required_if:payment_type,credito|integer|min:1|max:12',
             'initial_payment' => 'nullable|numeric|min:0',
             'discount' => 'nullable|numeric|min:0',
@@ -159,6 +165,18 @@ class SaleController extends Controller
             'details.*.quantity' => 'required|integer|min:1',
             'details.*.unit_price' => 'required|numeric|min:0',
         ]);
+
+        // Validar ventas por debajo del costo si está configurado
+        if (!$settings->allow_sale_below_cost) {
+            foreach ($validated['details'] as $detail) {
+                $product = Product::find($detail['product_id']);
+                if ($detail['unit_price'] < $product->purchase_price) {
+                    return back()->withErrors([
+                        'details' => "No se permite vender el producto '{$product->name}' por debajo del costo de compra (S/ {$product->purchase_price})."
+                    ]);
+                }
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -435,14 +453,21 @@ class SaleController extends Controller
     {
         $sale->load(['customer', 'branch', 'user', 'details.product', 'payments']);
 
+        // Obtener configuraciones de la empresa
+        $settings = Setting::get();
+
         $size = $request->query('size', 'a4'); // a4, a5, 80mm, 50mm
 
         // Configuración según el tamaño
         $config = $this->getPdfConfig($size);
 
-        $pdf = PDF::loadView('pdf.sale', [
+        // Determinar qué vista usar según el tamaño
+        $view = in_array($size, ['80mm', '50mm']) ? 'pdf.sale-ticket' : 'pdf.sale-a4';
+
+        $pdf = PDF::loadView($view, [
             'sale' => $sale,
             'config' => $config,
+            'settings' => $settings,
         ])
         ->setPaper($config['paper'], $config['orientation']);
 
@@ -474,17 +499,17 @@ class SaleController extends Controller
                 return [
                     'paper' => [0, 0, 226.77, 566.93], // 80mm ancho
                     'orientation' => 'portrait',
-                    'width' => '80mm',
-                    'height' => '200mm',
-                    'fontSize' => '8px',
+                    'width' => '70mm', // Ancho útil (dejando 5mm de margen a cada lado)
+                    'height' => 'auto',
+                    'fontSize' => '13px', // Letras más grandes y legibles
                 ];
             case '50mm':
                 return [
                     'paper' => [0, 0, 141.73, 566.93], // 50mm ancho
                     'orientation' => 'portrait',
-                    'width' => '50mm',
-                    'height' => '200mm',
-                    'fontSize' => '7px',
+                    'width' => '46mm', // Más margen para evitar desbordamiento
+                    'height' => 'auto',
+                    'fontSize' => '9px', // Más grande para mejor legibilidad
                 ];
             default: // a4
                 return [

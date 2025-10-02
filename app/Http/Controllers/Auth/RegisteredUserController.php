@@ -18,9 +18,20 @@ class RegisteredUserController extends Controller
     /**
      * Show the registration page.
      */
-    public function create(): Response
+    public function create(): Response|RedirectResponse
     {
-        return Inertia::render('auth/register');
+        // Verificar si ya hay usuarios en la base de datos
+        $hasUsers = User::count() > 0;
+
+        // Si ya hay usuarios, redirigir al login (el registro está deshabilitado)
+        if ($hasUsers) {
+            return redirect()->route('login')->with('status', 'El registro está deshabilitado.');
+        }
+
+        // Es el primer usuario (configuración inicial)
+        return Inertia::render('auth/register', [
+            'isFirstUser' => true,
+        ]);
     }
 
     /**
@@ -30,6 +41,15 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Verificar si ya hay usuarios (solo permitir registro si es el primer usuario)
+        $hasUsers = User::count() > 0;
+
+        if ($hasUsers) {
+            return redirect()->route('login')->withErrors([
+                'email' => 'El registro está deshabilitado. Por favor, inicia sesión.'
+            ]);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,

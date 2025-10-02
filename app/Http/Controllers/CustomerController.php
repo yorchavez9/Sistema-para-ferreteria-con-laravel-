@@ -14,29 +14,60 @@ class CustomerController extends Controller
      */
     public function index(Request $request)
     {
-        $customers = Customer::query()
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%")
-                    ->orWhere('document_number', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            })
-            ->when($request->has('is_active'), function ($query) use ($request) {
-                $query->where('is_active', $request->is_active);
-            })
-            ->when($request->customer_type, function ($query, $type) {
-                $query->where('customer_type', $type);
-            })
-            ->when($request->document_type, function ($query, $type) {
-                $query->where('document_type', $type);
-            })
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+        $query = Customer::query();
+
+        // Búsqueda
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('document_number', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtro de estado
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        // Filtro de tipo de cliente
+        if ($request->customer_type) {
+            $query->where('customer_type', $request->customer_type);
+        }
+
+        // Filtro de tipo de documento
+        if ($request->document_type) {
+            $query->where('document_type', $request->document_type);
+        }
+
+        // Filtro de términos de pago
+        if ($request->payment_terms) {
+            $query->where('payment_terms', $request->payment_terms);
+        }
+
+        // Ordenamiento
+        $sortField = $request->get('sort_field', 'name');
+        $sortDirection = $request->get('sort_direction', 'asc');
+        $query->orderBy($sortField, $sortDirection);
+
+        $perPage = $request->get('per_page', 15);
+        $customers = $query->paginate($perPage)->withQueryString();
+
+        // Estadísticas
+        $stats = [
+            'total_customers' => Customer::count(),
+            'active_customers' => Customer::where('is_active', true)->count(),
+            'personal_customers' => Customer::where('customer_type', 'personal')->count(),
+            'business_customers' => Customer::where('customer_type', 'empresa')->count(),
+        ];
 
         return Inertia::render('Customers/Index', [
             'customers' => $customers,
-            'filters' => $request->only(['search', 'is_active', 'customer_type', 'document_type']),
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'is_active', 'customer_type', 'document_type', 'payment_terms', 'sort_field', 'sort_direction', 'per_page']),
         ]);
     }
 

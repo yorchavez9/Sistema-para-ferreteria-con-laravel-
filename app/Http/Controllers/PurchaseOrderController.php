@@ -6,6 +6,7 @@ use App\Models\PurchaseOrder;
 use App\Models\Supplier;
 use App\Models\Branch;
 use App\Models\Product;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -290,14 +291,21 @@ class PurchaseOrderController extends Controller
     {
         $purchaseOrder->load(['supplier', 'branch', 'user', 'details.product.category', 'details.product.brand']);
 
+        // Obtener configuraciones de la empresa
+        $settings = Setting::get();
+
         $size = $request->query('size', 'a4'); // a4, a5, 80mm, 50mm
 
         // Configuración según el tamaño
         $config = $this->getPdfConfig($size);
 
-        $pdf = Pdf::loadView('pdf.purchase-order', [
+        // Determinar qué vista usar según el tamaño
+        $view = in_array($size, ['80mm', '50mm']) ? 'pdf.purchase-order-ticket' : 'pdf.purchase-order-a4';
+
+        $pdf = Pdf::loadView($view, [
             'order' => $purchaseOrder,
             'config' => $config,
+            'settings' => $settings,
         ])
         ->setPaper($config['paper'], $config['orientation']);
 
@@ -325,17 +333,17 @@ class PurchaseOrderController extends Controller
                 return [
                     'paper' => [0, 0, 226.77, 566.93], // 80mm ancho
                     'orientation' => 'portrait',
-                    'width' => '80mm',
-                    'height' => '200mm',
-                    'fontSize' => '8px',
+                    'width' => '70mm', // Ancho útil (dejando 5mm de margen a cada lado)
+                    'height' => 'auto',
+                    'fontSize' => '13px', // Letras más grandes y legibles
                 ];
             case '50mm':
                 return [
                     'paper' => [0, 0, 141.73, 566.93], // 50mm ancho
                     'orientation' => 'portrait',
-                    'width' => '50mm',
-                    'height' => '200mm',
-                    'fontSize' => '7px',
+                    'width' => '46mm', // Más margen para evitar desbordamiento
+                    'height' => 'auto',
+                    'fontSize' => '9px', // Más grande para mejor legibilidad
                 ];
             default: // a4
                 return [

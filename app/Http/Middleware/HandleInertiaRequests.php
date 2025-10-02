@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\Setting;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -38,14 +39,26 @@ class HandleInertiaRequests extends Middleware
     {
         [$message, $author] = str(Inspiring::quotes()->random())->explode('-');
 
+        $settings = Setting::get();
+
         return [
             ...parent::share($request),
-            'name' => config('app.name'),
+            'name' => $settings->company_name ?? config('app.name'),
             'quote' => ['message' => trim($message), 'author' => trim($author)],
             'auth' => [
                 'user' => $request->user(),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'settings' => [
+                'company_name' => $settings->company_name,
+                'company_ruc' => $settings->company_ruc,
+                'company_phone' => $settings->company_phone,
+                'company_email' => $settings->company_email,
+                'company_logo' => $settings->logo_url,
+                'currency_symbol' => $settings->currency_symbol,
+                'igv_percentage' => $settings->igv_percentage,
+                'price_decimals' => $settings->price_decimals,
+            ],
         ];
     }
 }

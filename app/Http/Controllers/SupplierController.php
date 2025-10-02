@@ -14,26 +14,55 @@ class SupplierController extends Controller
      */
     public function index(Request $request)
     {
-        $suppliers = Supplier::query()
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%")
-                    ->orWhere('document_number', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            })
-            ->when($request->has('is_active'), function ($query) use ($request) {
-                $query->where('is_active', $request->is_active);
-            })
-            ->when($request->document_type, function ($query, $type) {
-                $query->where('document_type', $type);
-            })
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
+        $query = Supplier::query();
+
+        // Búsqueda
+        if ($request->search) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%")
+                  ->orWhere('document_number', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('contact_person', 'like', "%{$search}%");
+            });
+        }
+
+        // Filtro de estado
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        // Filtro de tipo de documento
+        if ($request->document_type) {
+            $query->where('document_type', $request->document_type);
+        }
+
+        // Filtro de términos de pago
+        if ($request->payment_terms) {
+            $query->where('payment_terms', $request->payment_terms);
+        }
+
+        // Ordenamiento
+        $sortField = $request->get('sort_field', 'name');
+        $sortDirection = $request->get('sort_direction', 'asc');
+        $query->orderBy($sortField, $sortDirection);
+
+        $perPage = $request->get('per_page', 15);
+        $suppliers = $query->paginate($perPage)->withQueryString();
+
+        // Estadísticas
+        $stats = [
+            'total_suppliers' => Supplier::count(),
+            'active_suppliers' => Supplier::where('is_active', true)->count(),
+            'with_ruc' => Supplier::where('document_type', 'RUC')->count(),
+            'credit_suppliers' => Supplier::where('payment_terms', '!=', 'contado')->count(),
+        ];
 
         return Inertia::render('Suppliers/Index', [
             'suppliers' => $suppliers,
-            'filters' => $request->only(['search', 'is_active', 'document_type']),
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'is_active', 'document_type', 'payment_terms', 'sort_field', 'sort_direction', 'per_page']),
         ]);
     }
 

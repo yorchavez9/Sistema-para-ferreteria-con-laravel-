@@ -27,7 +27,13 @@ import {
     Receipt,
     Calculator,
     CreditCard,
-    DollarSign
+    DollarSign,
+    Settings,
+    UserCog,
+    Shield,
+    Cloud,
+    FileText,
+    Percent
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -110,19 +116,53 @@ const mainNavItems: NavItem[] = [
             },
         ],
     },
+    {
+        title: 'Administración',
+        icon: Settings,
+        items: [
+            {
+                title: 'Usuarios',
+                href: '/users',
+                icon: UserCog,
+            },
+            {
+                title: 'Roles y Permisos',
+                href: '/roles',
+                icon: Shield,
+            },
+        ],
+    },
+    {
+        title: 'Configuración',
+        icon: Settings,
+        items: [
+            {
+                title: 'Datos de la Empresa',
+                href: '/settings/system/company',
+                icon: Building2,
+            },
+            {
+                title: 'Configuración Fiscal',
+                href: '/settings/system/fiscal',
+                icon: Percent,
+            },
+            {
+                title: 'APIs Externas',
+                href: '/settings/system/apis',
+                icon: Cloud,
+            },
+            {
+                title: 'Documentos',
+                href: '/settings/system/documents',
+                icon: FileText,
+            },
+        ],
+    },
 ];
 
 const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: Folder,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
+    // Puedes agregar enlaces útiles para tu ferretería aquí
+    // Por ejemplo: Manual de usuario, Soporte técnico, etc.
 ];
 
 export function AppSidebar() {
@@ -145,7 +185,9 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
+                {footerNavItems.length > 0 && (
+                    <NavFooter items={footerNavItems} className="mt-auto" />
+                )}
                 <NavUser />
             </SidebarFooter>
         </Sidebar>
