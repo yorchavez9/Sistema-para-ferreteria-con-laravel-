@@ -25,7 +25,7 @@ import {
     Plus,
     Search,
     Eye,
-    Pencil,
+    SquarePen,
     Trash2,
     Receipt,
     Filter,
@@ -36,9 +36,7 @@ import {
     ChevronRight,
     Minus,
     Calendar,
-    ShoppingCart,
-    DollarSign,
-    CreditCard
+    ShoppingCart
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { useDebouncedCallback } from 'use-debounce';
@@ -678,7 +676,7 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                                                                     <Eye className="h-4 w-4" />
                                                                 </Button>
                                                             </Link>
-                                                            {sale.status === 'pendiente' && (
+                                                            {(sale.status === 'pendiente' || sale.status === 'pagado') && (
                                                                 <>
                                                                     <Link href={`/sales/${sale.id}/edit`}>
                                                                         <Button
@@ -686,7 +684,7 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                                                                             size="sm"
                                                                             className="h-8 w-8 p-0"
                                                                         >
-                                                                            <Pencil className="h-4 w-4" />
+                                                                            <SquarePen className="h-4 w-4" />
                                                                         </Button>
                                                                     </Link>
                                                                     <Button
@@ -794,7 +792,7 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                                                                                 Ver Detalles
                                                                             </Button>
                                                                         </Link>
-                                                                        {sale.status === 'pendiente' && (
+                                                                        {(sale.status === 'pendiente' || sale.status === 'pagado') && (
                                                                             <>
                                                                                 <Link
                                                                                     href={`/sales/${sale.id}/edit`}
@@ -805,7 +803,7 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                                                                                         variant="outline"
                                                                                         className="w-full h-9"
                                                                                     >
-                                                                                        <Pencil className="h-4 w-4 mr-2" />
+                                                                                        <SquarePen className="h-4 w-4 mr-2" />
                                                                                         Editar
                                                                                     </Button>
                                                                                 </Link>

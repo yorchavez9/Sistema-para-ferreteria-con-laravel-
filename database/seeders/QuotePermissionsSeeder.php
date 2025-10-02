@@ -21,7 +21,9 @@ class QuotePermissionsSeeder extends Seeder
                 'quote-edit',
                 'quote-delete',
             ]);
-            $this->command->info('Permisos de cotizaciones asignados al rol Administrador');
+            if ($this->command) {
+                $this->command->info('Permisos de cotizaciones asignados al rol Administrador');
+            }
         }
 
         // Asignar permisos de cotizaciones al rol Vendedor si existe
@@ -32,7 +34,9 @@ class QuotePermissionsSeeder extends Seeder
                 'quote-create',
                 'quote-edit',
             ]);
-            $this->command->info('Permisos de cotizaciones asignados al rol Vendedor');
+            if ($this->command) {
+                $this->command->info('Permisos de cotizaciones asignados al rol Vendedor');
+            }
         }
 
         // Asignar permisos de solo lectura al rol Almacenero si existe
@@ -41,7 +45,9 @@ class QuotePermissionsSeeder extends Seeder
             $almacenero->givePermissionTo([
                 'quote-list',
             ]);
-            $this->command->info('Permisos de cotizaciones asignados al rol Almacenero');
+            if ($this->command) {
+                $this->command->info('Permisos de cotizaciones asignados al rol Almacenero');
+            }
         }
     }
 }

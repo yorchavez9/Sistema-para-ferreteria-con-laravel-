@@ -64,6 +64,9 @@ class DocumentSeriesSeeder extends Seeder
             ]);
         }
 
-        $this->command->info('Series de documentos creadas exitosamente para todas las sucursales.');
+        // Solo mostrar mensaje si se ejecuta desde consola
+        if ($this->command) {
+            $this->command->info('Series de documentos creadas exitosamente para todas las sucursales.');
+        }
     }
 }

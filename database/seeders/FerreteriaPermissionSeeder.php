@@ -108,6 +108,8 @@ class FerreteriaPermissionSeeder extends Seeder
             'reports-suppliers',
 
             // Configuración
+            'settings-view',
+            'settings-edit',
             'settings-general',
             'settings-company',
             'settings-tax',

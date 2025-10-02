@@ -14,8 +14,6 @@ import { dashboard } from '@/routes';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/react';
 import {
-    BookOpen,
-    Folder,
     LayoutGrid,
     Package,
     Tags,
@@ -33,16 +31,73 @@ import {
     Shield,
     Cloud,
     FileText,
-    Percent
+    Percent,
+    Wallet,
+    TrendingUp,
+    BarChart3
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
+    // 1. DASHBOARD
     {
         title: 'Dashboard',
         href: dashboard().url,
         icon: LayoutGrid,
     },
+
+    // 2. VENTAS
+    {
+        title: 'Ventas',
+        icon: CreditCard,
+        items: [
+            {
+                title: 'Nueva Venta',
+                href: '/sales/create',
+                icon: CreditCard,
+            },
+            {
+                title: 'Lista de Ventas',
+                href: '/sales',
+                icon: Receipt,
+            },
+            {
+                title: 'Cotizaciones',
+                href: '/quotes',
+                icon: Calculator,
+            },
+            {
+                title: 'Gestión de Pagos',
+                href: '/payments',
+                icon: DollarSign,
+            },
+        ],
+    },
+
+    // 3. COMPRAS
+    {
+        title: 'Compras',
+        icon: ShoppingCart,
+        items: [
+            {
+                title: 'Nueva Compra',
+                href: '/purchase-orders/create',
+                icon: ShoppingCart,
+            },
+            {
+                title: 'Órdenes de Compra',
+                href: '/purchase-orders',
+                icon: Receipt,
+            },
+            {
+                title: 'Proveedores',
+                href: '/suppliers',
+                icon: Truck,
+            },
+        ],
+    },
+
+    // 4. INVENTARIO
     {
         title: 'Inventario',
         icon: Package,
@@ -51,6 +106,11 @@ const mainNavItems: NavItem[] = [
                 title: 'Productos',
                 href: '/products',
                 icon: Package,
+            },
+            {
+                title: 'Control de Stock',
+                href: '/inventory',
+                icon: Archive,
             },
             {
                 title: 'Categorías',
@@ -62,60 +122,70 @@ const mainNavItems: NavItem[] = [
                 href: '/brands',
                 icon: Tags,
             },
-            {
-                title: 'Stock',
-                href: '/inventory',
-                icon: Archive,
-            },
-            {
-                title: 'Sucursales',
-                href: '/branches',
-                icon: Building2,
-            },
         ],
     },
+
+    // 5. CLIENTES
     {
-        title: 'Compras',
-        icon: ShoppingCart,
-        items: [
-            {
-                title: 'Proveedores',
-                href: '/suppliers',
-                icon: Truck,
-            },
-            {
-                title: 'Órdenes de Compra',
-                href: '/purchase-orders',
-                icon: Receipt,
-            },
-        ],
+        title: 'Clientes',
+        href: '/customers',
+        icon: Users,
     },
+
+    // 6. CAJA (Placeholder para futuro módulo)
+    // {
+    //     title: 'Caja',
+    //     icon: Wallet,
+    //     items: [
+    //         {
+    //             title: 'Abrir/Cerrar Caja',
+    //             href: '/cash/sessions',
+    //             icon: Wallet,
+    //         },
+    //         {
+    //             title: 'Movimientos',
+    //             href: '/cash/movements',
+    //             icon: TrendingUp,
+    //         },
+    //         {
+    //             title: 'Gastos',
+    //             href: '/expenses',
+    //             icon: Receipt,
+    //         },
+    //     ],
+    // },
+
+    // 7. REPORTES (Placeholder para futuro)
+    // {
+    //     title: 'Reportes',
+    //     icon: BarChart3,
+    //     items: [
+    //         {
+    //             title: 'Reporte de Ventas',
+    //             href: '/reports/sales',
+    //             icon: TrendingUp,
+    //         },
+    //         {
+    //             title: 'Reporte de Inventario',
+    //             href: '/reports/inventory',
+    //             icon: Archive,
+    //         },
+    //         {
+    //             title: 'Reporte Financiero',
+    //             href: '/reports/financial',
+    //             icon: DollarSign,
+    //         },
+    //     ],
+    // },
+
+    // 8. SUCURSALES
     {
-        title: 'Ventas',
-        icon: CreditCard,
-        items: [
-            {
-                title: 'Clientes',
-                href: '/customers',
-                icon: Users,
-            },
-            {
-                title: 'Facturas',
-                href: '/sales',
-                icon: Receipt,
-            },
-            {
-                title: 'Gestión de Pagos',
-                href: '/payments',
-                icon: DollarSign,
-            },
-            {
-                title: 'Cotizaciones',
-                href: '/quotes',
-                icon: Calculator,
-            },
-        ],
+        title: 'Sucursales',
+        href: '/branches',
+        icon: Building2,
     },
+
+    // 9. ADMINISTRACIÓN
     {
         title: 'Administración',
         icon: Settings,
@@ -132,6 +202,8 @@ const mainNavItems: NavItem[] = [
             },
         ],
     },
+
+    // 10. CONFIGURACIÓN
     {
         title: 'Configuración',
         icon: Settings,
@@ -147,14 +219,14 @@ const mainNavItems: NavItem[] = [
                 icon: Percent,
             },
             {
+                title: 'Series de Documentos',
+                href: '/settings/system/documents',
+                icon: FileText,
+            },
+            {
                 title: 'APIs Externas',
                 href: '/settings/system/apis',
                 icon: Cloud,
-            },
-            {
-                title: 'Documentos',
-                href: '/settings/system/documents',
-                icon: FileText,
             },
         ],
     },

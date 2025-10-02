@@ -20,14 +20,5 @@ class DatabaseSeeder extends Seeder
             FerreteriaDataSeeder::class,
         ]);
 
-        // Crear usuario de prueba adicional
-        User::firstOrCreate(
-            ['email' => 'test@example.com'],
-            [
-                'name' => 'Test User',
-                'password' => Hash::make('password'),
-                'email_verified_at' => now(),
-            ]
-        );
     }
 }

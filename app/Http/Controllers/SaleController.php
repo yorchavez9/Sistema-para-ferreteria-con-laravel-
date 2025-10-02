@@ -255,6 +255,11 @@ class SaleController extends Controller
                 }
             }
 
+            // Determinar estado inicial basado en tipo de pago
+            // Contado = pagado (el cliente ya pagó)
+            // Crédito = pendiente (el cliente pagará después)
+            $initialStatus = $validated['payment_type'] === 'contado' ? 'pagado' : 'pendiente';
+
             $sale = Sale::create([
                 'series' => $series,
                 'correlativo' => $correlativo,
@@ -268,7 +273,7 @@ class SaleController extends Controller
                 'credit_days' => $validated['credit_days'] ?? null,
                 'installments' => $validated['installments'] ?? null,
                 'initial_payment' => $validated['initial_payment'] ?? 0,
-                'status' => 'pendiente',
+                'status' => $initialStatus,
                 'discount' => $validated['discount'] ?? 0,
                 'amount_paid' => $validated['amount_paid'],
                 'notes' => $validated['notes'] ?? null,
@@ -351,8 +356,10 @@ class SaleController extends Controller
 
     public function edit(Sale $sale)
     {
-        if ($sale->status !== 'pendiente') {
-            return back()->withErrors(['error' => 'Solo se pueden editar ventas pendientes.']);
+        // Permitir editar ventas pendientes y pagadas
+        // No se pueden editar ventas anuladas o canceladas
+        if ($sale->status === 'anulado' || $sale->status === 'cancelado') {
+            return back()->withErrors(['error' => 'No se pueden editar ventas anuladas o canceladas.']);
         }
 
         $sale->load(['customer', 'branch', 'details.product']);
@@ -376,8 +383,9 @@ class SaleController extends Controller
 
     public function update(Request $request, Sale $sale)
     {
-        if ($sale->status !== 'pendiente') {
-            return back()->withErrors(['error' => 'Solo se pueden editar ventas pendientes.']);
+        // Permitir editar ventas pendientes y pagadas
+        if ($sale->status === 'anulado' || $sale->status === 'cancelado') {
+            return back()->withErrors(['error' => 'No se pueden editar ventas anuladas o canceladas.']);
         }
 
         $validated = $request->validate([
@@ -441,8 +449,9 @@ class SaleController extends Controller
 
     public function destroy(Sale $sale)
     {
-        if ($sale->status !== 'pendiente') {
-            return back()->withErrors(['error' => 'Solo se pueden eliminar ventas pendientes.']);
+        // Permitir eliminar ventas pendientes y pagadas (devolverá inventario)
+        if ($sale->status === 'anulado' || $sale->status === 'cancelado') {
+            return back()->withErrors(['error' => 'No se pueden eliminar ventas anuladas o canceladas.']);
         }
 
         $sale->delete();

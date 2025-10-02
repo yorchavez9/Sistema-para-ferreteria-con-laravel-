@@ -868,11 +868,16 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                             Volver
                         </Button>
                     </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold">Nueva Venta</h1>
-                        <p className="text-muted-foreground">
-                            Registra una nueva venta de productos
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <div className="p-3 bg-primary/10 rounded-lg">
+                            <ShoppingCart className="h-8 w-8 text-primary" />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-bold">Nueva Venta</h1>
+                            <p className="text-muted-foreground">
+                                Registra una nueva venta de productos
+                            </p>
+                        </div>
                     </div>
                 </div>
 

@@ -153,12 +153,13 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
         { title: 'Editar', href: `/sales/${sale.id}/edit` },
     ];
 
-    // Solo permitir editar ventas pendientes
+    // Permitir editar ventas pendientes y pagadas
+    // No permitir editar ventas anuladas o canceladas
     useEffect(() => {
-        if (sale.status !== 'pendiente') {
+        if (sale.status === 'anulado' || sale.status === 'cancelado') {
             Swal.fire({
                 title: 'No permitido',
-                text: 'Solo se pueden editar ventas con estado pendiente.',
+                text: 'No se pueden editar ventas anuladas o canceladas.',
                 icon: 'warning',
             }).then(() => {
                 router.visit(`/sales/${sale.id}`);
@@ -170,7 +171,7 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
         branch_id: sale.branch_id.toString(),
         document_type: sale.document_type,
         document_series_id: sale.document_series_id?.toString() || '',
-        sale_date: sale.sale_date,
+        sale_date: sale.sale_date.split('T')[0], // Extraer solo YYYY-MM-DD
         payment_method: sale.payment_method,
         discount: sale.discount.toString(),
         amount_paid: sale.amount_paid.toString(),
@@ -197,27 +198,8 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
     const [selectedSearchIndex, setSelectedSearchIndex] = useState(-1);
     const [searching, setSearching] = useState(false);
 
-    const [availableSeries, setAvailableSeries] = useState<DocumentSeries[]>(available_series);
-
-    // Actualizar series disponibles cuando cambie el tipo de documento o sucursal
-    useEffect(() => {
-        if (formData.document_type !== 'nota_venta') {
-            const fetchSeries = async () => {
-                try {
-                    const response = await axios.get('/sales/create', {
-                        params: {
-                            branch_id: formData.branch_id,
-                            document_type: formData.document_type,
-                        }
-                    });
-                    setAvailableSeries(response.data.props.available_series || []);
-                } catch (error) {
-                    console.error('Error fetching series:', error);
-                }
-            };
-            fetchSeries();
-        }
-    }, [formData.branch_id, formData.document_type]);
+    // Las series no se pueden cambiar al editar una venta
+    const [availableSeries] = useState<DocumentSeries[]>(available_series || []);
 
     // Búsqueda en tiempo real
     useEffect(() => {
@@ -335,6 +317,14 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
         const paid = parseFloat(formData.amount_paid) || 0;
         return Math.max(0, paid - total);
     }, [formData.amount_paid, total]);
+
+    // Actualizar automáticamente el monto pagado cuando cambie el total
+    useEffect(() => {
+        setFormData(prev => ({
+            ...prev,
+            amount_paid: total.toFixed(2)
+        }));
+    }, [total]);
 
     // Calcular cambios de inventario
     const calculateInventoryChanges = (): InventoryChange[] => {
@@ -520,14 +510,19 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
                 </div>
 
                 {/* Alerta de edición */}
-                <Alert className="border-amber-500 bg-amber-50">
-                    <AlertTriangle className="h-4 w-4 text-amber-600" />
-                    <AlertTitle className="text-amber-900">Edición de Venta Pendiente</AlertTitle>
-                    <AlertDescription className="text-amber-800">
-                        Esta venta está en estado <strong>pendiente</strong>. Los cambios que realices afectarán automáticamente el inventario.
+                <Alert className="border-blue-500 bg-blue-50">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertTitle className="text-blue-900">Editando Venta</AlertTitle>
+                    <AlertDescription className="text-blue-800">
+                        El inventario de esta venta ya ha sido descontado. Al modificar los productos, el sistema ajustará automáticamente el stock:
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                            <li>Productos eliminados: se devolverá el stock</li>
+                            <li>Productos agregados: se descontará del stock</li>
+                            <li>Cantidades modificadas: se ajustará la diferencia</li>
+                        </ul>
                         {parseInt(formData.branch_id) !== originalBranchId && (
-                            <span className="block mt-1 font-semibold">
-                                ⚠️ Has cambiado la sucursal: el stock se transferirá entre sucursales.
+                            <span className="block mt-2 font-semibold text-amber-700">
+                                ⚠️ Has cambiado la sucursal: el stock se devolverá a <strong>{sale.branch.name}</strong> y se descontará de la nueva sucursal.
                             </span>
                         )}
                     </AlertDescription>

@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -16,7 +16,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Search, Plus, Package } from 'lucide-react';
+import { Search, Plus, Package, Loader2 } from 'lucide-react';
+import axios from 'axios';
 
 interface Product {
     id: number;
@@ -24,7 +25,9 @@ interface Product {
     code: string;
     sale_price: number;
     purchase_price?: number;
+    stock?: number;
     total_stock?: number;
+    unit?: string;
     category?: {
         name: string;
     };
@@ -36,20 +39,53 @@ interface Product {
 interface ProductSelectorModalProps {
     open: boolean;
     onClose: () => void;
-    products: Product[];
-    onAddProduct: (productId: number) => void;
+    products?: Product[];
+    onAddProduct?: (productId: number) => void;
+    onSelectProduct?: (product: Product) => void;
+    branchId?: number;
 }
 
 export default function ProductSelectorModal({
     open,
     onClose,
-    products,
+    products: propProducts,
     onAddProduct,
+    onSelectProduct,
+    branchId,
 }: ProductSelectorModalProps) {
     const [searchTerm, setSearchTerm] = useState('');
+    const [products, setProducts] = useState<Product[]>(propProducts || []);
+    const [loading, setLoading] = useState(false);
+
+    // Si se pasa branchId, cargar productos desde API
+    useEffect(() => {
+        if (branchId && open) {
+            const loadProducts = async () => {
+                setLoading(true);
+                try {
+                    const response = await axios.get('/api/products/search', {
+                        params: {
+                            branch_id: branchId,
+                            search: '',
+                        }
+                    });
+                    setProducts(response.data.products || []);
+                } catch (error) {
+                    console.error('Error loading products:', error);
+                    setProducts([]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            loadProducts();
+        } else if (propProducts) {
+            setProducts(propProducts);
+        }
+    }, [branchId, open, propProducts]);
 
     // Filter products based on search term
     const filteredProducts = useMemo(() => {
+        if (!products) return [];
         if (!searchTerm.trim()) return products;
         const search = searchTerm.toLowerCase();
         return products.filter(product =>
@@ -60,8 +96,13 @@ export default function ProductSelectorModal({
         );
     }, [products, searchTerm]);
 
-    const handleAddProduct = (productId: number) => {
-        onAddProduct(productId);
+    const handleAddProduct = (product: Product) => {
+        if (onSelectProduct) {
+            onSelectProduct(product);
+        } else if (onAddProduct) {
+            onAddProduct(product.id);
+        }
+        handleClose();
     };
 
     const handleClose = () => {
@@ -109,45 +150,57 @@ export default function ProductSelectorModal({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredProducts.length > 0 ? (
-                                filteredProducts.map((product) => (
-                                    <TableRow key={product.id} className="hover:bg-muted/50">
-                                        <TableCell>
-                                            <span className="font-mono font-semibold text-primary">
-                                                {product.code}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="font-medium">
-                                            {product.name}
-                                        </TableCell>
-                                        <TableCell>
-                                            {product.category?.name || '-'}
-                                        </TableCell>
-                                        <TableCell>
-                                            {product.brand?.name || '-'}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <span className="font-semibold text-lg text-green-600">
-                                                S/ {Number(product.sale_price || 0).toFixed(2)}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <span className={`font-semibold ${product.total_stock && product.total_stock > 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                                                {product.total_stock || 0}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-center">
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                onClick={() => handleAddProduct(product.id)}
-                                            >
-                                                <Plus className="h-4 w-4 mr-1" />
-                                                Agregar
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={7} className="text-center py-8">
+                                        <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                                            <Loader2 className="h-10 w-10 opacity-50 animate-spin" />
+                                            <p>Cargando productos...</p>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ) : filteredProducts.length > 0 ? (
+                                filteredProducts.map((product) => {
+                                    const stock = product.stock || product.total_stock || 0;
+                                    return (
+                                        <TableRow key={product.id} className="hover:bg-muted/50">
+                                            <TableCell>
+                                                <span className="font-mono font-semibold text-primary">
+                                                    {product.code}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="font-medium">
+                                                {product.name}
+                                            </TableCell>
+                                            <TableCell>
+                                                {product.category?.name || '-'}
+                                            </TableCell>
+                                            <TableCell>
+                                                {product.brand?.name || '-'}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <span className="font-semibold text-lg text-green-600">
+                                                    S/ {Number(product.sale_price || 0).toFixed(2)}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <span className={`font-semibold ${stock > 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                                                    {stock}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    onClick={() => handleAddProduct(product)}
+                                                >
+                                                    <Plus className="h-4 w-4 mr-1" />
+                                                    Agregar
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             ) : (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-8">

@@ -129,10 +129,11 @@ class Sale extends Model
     }
 
     // Procesar venta (actualizar inventario)
+    // Acepta tanto ventas pendientes como pagadas (ambas son editables)
     public function processSale(): void
     {
-        if ($this->status !== 'pendiente') {
-            throw new \Exception('Solo se pueden procesar ventas pendientes.');
+        if ($this->status !== 'pendiente' && $this->status !== 'pagado') {
+            throw new \Exception('Solo se pueden procesar ventas pendientes o pagadas.');
         }
 
         foreach ($this->details as $detail) {
@@ -155,8 +156,10 @@ class Sale extends Model
             $inventory->save();
         }
 
-        $this->status = 'pagado';
-        $this->save();
+        // NOTA: El estado no se modifica aquí
+        // - Ventas contado: permanecen en 'pagado'
+        // - Ventas crédito: permanecen en 'pendiente'
+        // El inventario ya ha sido descontado en ambos casos
     }
 
     // Anular venta (devolver inventario)
@@ -166,8 +169,9 @@ class Sale extends Model
             throw new \Exception('Esta venta ya está anulada.');
         }
 
-        if ($this->status === 'pagado') {
-            // Devolver inventario
+        // Devolver inventario tanto para ventas pendientes como pagadas
+        // (ambas tienen inventario descontado)
+        if ($this->status === 'pagado' || $this->status === 'pendiente') {
             foreach ($this->details as $detail) {
                 $inventory = Inventory::where('product_id', $detail->product_id)
                     ->where('branch_id', $this->branch_id)
@@ -192,8 +196,9 @@ class Sale extends Model
      */
     public function adjustInventoryOnUpdate(array $newDetails, $newBranchId): void
     {
-        if ($this->status !== 'pendiente') {
-            throw new \Exception('Solo se puede ajustar inventario en ventas pendientes.');
+        // Permitir ajustar inventario en ventas pendientes y pagadas
+        if ($this->status === 'anulado' || $this->status === 'cancelado') {
+            throw new \Exception('No se puede ajustar inventario en ventas anuladas o canceladas.');
         }
 
         // Obtener detalles originales antes de cualquier cambio

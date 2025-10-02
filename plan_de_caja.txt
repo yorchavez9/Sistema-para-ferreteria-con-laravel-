@@ -1,0 +1,376 @@
+📊 PLAN DE IMPLEMENTACIÓN: MÓDULO DE CAJA
+
+  🎯 OBJETIVOS
+
+  1. Gestión de Cajas: Control de apertura/cierre de cajas por sucursal y usuario
+  2. Movimientos de Efectivo: Registro de entradas/salidas de dinero
+  3. Control Contable: Cuadre de caja, reportes financieros
+  4. Integración: Conectar con ventas, pagos, gastos y transferencias
+
+  ---
+  📋 ANÁLISIS DEL SISTEMA ACTUAL
+
+  ✅ Lo que ya tienes:
+
+  - ✅ Sistema de ventas con pagos (contado/crédito)
+  - ✅ Modelo Payment para cuotas de crédito
+  - ✅ Métodos de pago: efectivo, tarjeta, transferencia, yape, plin
+  - ✅ Multi-sucursal (Branch)
+  - ✅ Multi-usuario con roles
+  - ✅ Compras (PurchaseOrder)
+
+  ❌ Lo que falta:
+
+  - ❌ Control de caja (apertura/cierre)
+  - ❌ Registro de gastos/egresos
+  - ❌ Movimientos de efectivo
+  - ❌ Arqueo de caja
+  - ❌ Reportes financieros
+  - ❌ Transferencias entre cajas
+
+  ---
+  🗄️ FASE 1: DISEÑO DE BASE DE DATOS
+
+  Tabla: cash_registers (Cajas Registradoras)
+
+  Schema::create('cash_registers', function (Blueprint $table) {
+      $table->id();
+      $table->string('name'); // "Caja Principal", "Caja 2"
+      $table->foreignId('branch_id')->constrained()->onDelete('cascade');
+      $table->enum('type', ['principal', 'secundaria'])->default('principal');
+      $table->boolean('is_active')->default(true);
+      $table->decimal('opening_balance', 12, 2)->default(0); // Fondo fijo inicial
+      $table->text('description')->nullable();
+      $table->timestamps();
+      $table->softDeletes();
+  });
+
+  Tabla: cash_sessions (Sesiones de Caja - Apertura/Cierre)
+
+  Schema::create('cash_sessions', function (Blueprint $table) {
+      $table->id();
+      $table->foreignId('cash_register_id')->constrained()->onDelete('cascade');
+      $table->foreignId('user_id')->constrained(); // Usuario que abre/cierra
+      $table->foreignId('branch_id')->constrained();
+
+      // Apertura
+      $table->dateTime('opened_at');
+      $table->decimal('opening_balance', 12, 2); // Efectivo inicial
+      $table->text('opening_notes')->nullable();
+
+      // Cierre
+      $table->dateTime('closed_at')->nullable();
+      $table->decimal('expected_balance', 12, 2)->nullable(); // Según sistema
+      $table->decimal('actual_balance', 12, 2)->nullable(); // Conteo físico
+      $table->decimal('difference', 12, 2)->nullable(); // Diferencia (sobrante/faltante)
+      $table->text('closing_notes')->nullable();
+
+      $table->enum('status', ['abierta', 'cerrada'])->default('abierta');
+      $table->timestamps();
+
+      $table->index(['cash_register_id', 'opened_at']);
+      $table->index(['user_id', 'status']);
+  });
+
+  Tabla: cash_movements (Movimientos de Caja)
+
+  Schema::create('cash_movements', function (Blueprint $table) {
+      $table->id();
+      $table->foreignId('cash_session_id')->constrained()->onDelete('cascade');
+      $table->foreignId('cash_register_id')->constrained()->onDelete('cascade');
+      $table->foreignId('user_id')->constrained(); // Usuario que registra
+      $table->foreignId('branch_id')->constrained();
+
+      $table->enum('type', [
+          'ingreso',      // Entrada de dinero
+          'egreso',       // Salida de dinero
+          'venta',        // Ingreso por venta
+          'pago_credito', // Ingreso por pago de cuota
+          'compra',       // Egreso por compra
+          'gasto',        // Egreso por gasto operativo
+          'transferencia_entrada', // Transferencia desde otra caja
+          'transferencia_salida',  // Transferencia hacia otra caja
+          'ajuste'        // Ajuste manual
+      ]);
+
+      $table->decimal('amount', 12, 2);
+      $table->enum('payment_method', ['efectivo', 'tarjeta', 'transferencia', 'yape', 'plin']);
+
+      // Referencias opcionales
+      $table->foreignId('sale_id')->nullable()->constrained()->onDelete('set null');
+      $table->foreignId('payment_id')->nullable()->constrained('sale_payments')->onDelete('set null');
+      $table->foreignId('purchase_order_id')->nullable()->constrained()->onDelete('set null');
+      $table->foreignId('expense_id')->nullable()->constrained()->onDelete('set null');
+
+      $table->string('reference_number')->nullable(); // Número de referencia
+      $table->text('description');
+      $table->text('notes')->nullable();
+
+      $table->timestamps();
+
+      $table->index(['cash_session_id', 'type']);
+      $table->index(['created_at']);
+  });
+
+  Tabla: expenses (Gastos Operativos)
+
+  Schema::create('expenses', function (Blueprint $table) {
+      $table->id();
+      $table->foreignId('branch_id')->constrained();
+      $table->foreignId('expense_category_id')->constrained();
+      $table->foreignId('user_id')->constrained(); // Usuario que registra
+      $table->foreignId('cash_session_id')->nullable()->constrained()->onDelete('set null');
+
+      $table->date('expense_date');
+      $table->decimal('amount', 12, 2);
+      $table->enum('payment_method', ['efectivo', 'tarjeta', 'transferencia']);
+
+      $table->string('supplier_name')->nullable(); // Proveedor del servicio
+      $table->string('document_type')->nullable(); // boleta, factura, recibo
+      $table->string('document_number')->nullable();
+
+      $table->text('description');
+      $table->text('notes')->nullable();
+      $table->string('receipt_file')->nullable(); // Archivo adjunto
+
+      $table->enum('status', ['pendiente', 'aprobado', 'rechazado'])->default('pendiente');
+      $table->timestamps();
+      $table->softDeletes();
+
+      $table->index(['expense_date']);
+      $table->index(['expense_category_id']);
+  });
+
+  Tabla: expense_categories (Categorías de Gastos)
+
+  Schema::create('expense_categories', function (Blueprint $table) {
+      $table->id();
+      $table->string('name'); // "Servicios", "Sueldos", "Alquiler", etc.
+      $table->text('description')->nullable();
+      $table->string('color')->default('#6b7280'); // Para UI
+      $table->boolean('is_active')->default(true);
+      $table->timestamps();
+  });
+
+  Tabla: cash_transfers (Transferencias entre Cajas)
+
+  Schema::create('cash_transfers', function (Blueprint $table) {
+      $table->id();
+      $table->foreignId('from_cash_register_id')->constrained('cash_registers');
+      $table->foreignId('to_cash_register_id')->constrained('cash_registers');
+      $table->foreignId('from_branch_id')->constrained('branches');
+      $table->foreignId('to_branch_id')->constrained('branches');
+      $table->foreignId('user_id')->constrained(); // Usuario que realiza
+
+      $table->dateTime('transfer_date');
+      $table->decimal('amount', 12, 2);
+      $table->text('description');
+      $table->text('notes')->nullable();
+
+      $table->enum('status', ['pendiente', 'completada', 'cancelada'])->default('pendiente');
+      $table->timestamps();
+  });
+
+  ---
+  🏗️ FASE 2: MODELOS Y LÓGICA DE NEGOCIO
+
+  Modelo: CashRegister
+
+  class CashRegister extends Model
+  {
+      public function branch() // Relación con sucursal
+      public function sessions() // Sesiones de caja
+      public function movements() // Movimientos
+      public function currentSession() // Sesión activa actual
+      public function isOpen() // ¿Está abierta?
+  }
+
+  Modelo: CashSession
+
+  class CashSession extends Model
+  {
+      public function cashRegister()
+      public function user()
+      public function movements()
+
+      // Métodos de negocio
+      public function open($openingBalance, $notes)
+      public function close($actualBalance, $notes)
+      public function calculateExpectedBalance()
+      public function getDifference()
+      public function getSalesTotal()
+      public function getExpensesTotal()
+      public function getIncomesTotal()
+      public function getEgressesTotal()
+  }
+
+  Modelo: CashMovement
+
+  class CashMovement extends Model
+  {
+      public function cashSession()
+      public function cashRegister()
+      public function user()
+      public function sale()
+      public function payment()
+      public function expense()
+
+      // Métodos
+      public static function recordSale($sale, $cashSession)
+      public static function recordPayment($payment, $cashSession)
+      public static function recordExpense($expense, $cashSession)
+      public static function recordIncome($amount, $description, $cashSession)
+      public static function recordEgress($amount, $description, $cashSession)
+  }
+
+  Modelo: Expense
+
+  class Expense extends Model
+  {
+      public function category()
+      public function branch()
+      public function user()
+      public function cashSession()
+
+      public function approve()
+      public function reject()
+  }
+
+  ---
+  🔄 FASE 3: INTEGRACIÓN CON SISTEMA EXISTENTE
+
+  1. Modificar SaleController::store()
+
+  Después de crear la venta, registrar movimiento en caja:
+
+  // Después de crear la venta
+  if ($sale->payment_type === 'contado') {
+      // Obtener sesión de caja abierta del usuario
+      $cashSession = CashSession::where('user_id', auth()->id())
+          ->where('status', 'abierta')
+          ->latest()
+          ->first();
+
+      if ($cashSession) {
+          CashMovement::recordSale($sale, $cashSession);
+      }
+  }
+
+  2. Modificar Payment::markAsPaid()
+
+  Registrar movimiento cuando se paga una cuota:
+
+  public function markAsPaid($paymentMethod, $transactionReference = null, $notes = null): void
+  {
+      // ... código existente ...
+
+      // Registrar en caja si es efectivo
+      if ($paymentMethod === 'efectivo') {
+          $cashSession = CashSession::getCurrentUserSession();
+          if ($cashSession) {
+              CashMovement::recordPayment($this, $cashSession);
+          }
+      }
+  }
+
+  ---
+  📱 FASE 4: VISTAS Y FUNCIONALIDAD
+
+  Vistas a Crear:
+
+  1. /cash/dashboard - Dashboard de caja
+    - Estado actual de cajas
+    - Sesión activa
+    - Resumen del día
+  2. /cash/open - Abrir caja
+    - Seleccionar caja
+    - Ingresar saldo inicial
+    - Notas de apertura
+  3. /cash/movements - Movimientos
+    - Lista de movimientos del día
+    - Filtros por tipo
+    - Agregar ingreso/egreso manual
+  4. /cash/close - Cerrar caja
+    - Resumen de movimientos
+    - Conteo de efectivo
+    - Arqueo y diferencia
+  5. /cash/sessions - Historial de sesiones
+    - Lista de sesiones cerradas
+    - Reportes de cuadre
+  6. /expenses - Gastos
+    - Registrar gastos
+    - Aprobar/rechazar gastos
+    - Categorías de gastos
+  7. /cash/reports - Reportes
+    - Flujo de caja
+    - Ingresos vs Egresos
+    - Comparativas por período
+
+  ---
+  🎯 FASE 5: IMPLEMENTACIÓN POR PASOS
+
+  PASO 1: Base de Datos (Semana 1)
+
+  ✅ Crear migraciones
+  ✅ Crear seeders para categorías de gastos
+  ✅ Ejecutar migraciones
+
+  PASO 2: Modelos y Relaciones (Semana 1-2)
+
+  ✅ Crear modelos
+  ✅ Definir relaciones
+  ✅ Crear métodos de negocio
+
+  PASO 3: Apertura/Cierre de Caja (Semana 2)
+
+  ✅ Controller: CashSessionController
+  ✅ Vista: Abrir caja
+  ✅ Vista: Cerrar caja
+  ✅ Lógica de cuadre
+
+  PASO 4: Movimientos Automáticos (Semana 3)
+
+  ✅ Integrar con ventas
+  ✅ Integrar con pagos
+  ✅ Middleware para verificar caja abierta
+
+  PASO 5: Gastos (Semana 3-4)
+
+  ✅ CRUD de gastos
+  ✅ Categorías de gastos
+  ✅ Aprobación de gastos
+
+  PASO 6: Movimientos Manuales (Semana 4)
+
+  ✅ Ingresos manuales
+  ✅ Egresos manuales
+  ✅ Transferencias entre cajas
+
+  PASO 7: Reportes (Semana 5)
+
+  ✅ Dashboard de caja
+  ✅ Reportes financieros
+  ✅ Exportación PDF/Excel
+
+  ---
+  💡 REGLAS DE NEGOCIO IMPORTANTES
+
+  1. Solo una sesión abierta por usuario/caja
+  2. Validar caja abierta antes de crear ventas en efectivo
+  3. Registrar automáticamente movimientos de ventas/pagos
+  4. Gastos requieren aprobación (opcional)
+  5. Arqueo de caja obligatorio al cierre
+  6. Histórico inmutable de sesiones cerradas
+
+  ---
+  📊 BENEFICIOS DEL MÓDULO
+
+  ✅ Control financiero completo
+  ✅ Trazabilidad de todo el dinero
+  ✅ Detección de diferencias (faltantes/sobrantes)
+  ✅ Reportes contables precisos
+  ✅ Cumplimiento de normativas
+  ✅ Auditoría facilitada
+
+  ---
+  ¿Quieres que empiece a implementar este plan? ¿Por cuál fase prefieres comenzar?

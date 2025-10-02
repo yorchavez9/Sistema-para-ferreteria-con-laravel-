@@ -263,7 +263,7 @@ export default function SaleShow({ sale }: SaleShowProps) {
                             <Printer className="h-4 w-4 mr-2" />
                             Imprimir
                         </Button>
-                        {sale.status === 'pendiente' && (
+                        {(sale.status === 'pendiente' || sale.status === 'pagado') && (
                             <Link href={`/sales/${sale.id}/edit`}>
                                 <Button size="sm">
                                     <Pencil className="h-4 w-4 mr-2" />

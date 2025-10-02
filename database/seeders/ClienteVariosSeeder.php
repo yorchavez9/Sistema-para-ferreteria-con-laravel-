@@ -25,9 +25,14 @@ class ClienteVariosSeeder extends Seeder
                 'is_active' => true,
             ]);
 
-            $this->command->info('Cliente "CLIENTE VARIOS" creado exitosamente.');
+            // Solo mostrar mensaje si se ejecuta desde consola
+            if ($this->command) {
+                $this->command->info('Cliente "CLIENTE VARIOS" creado exitosamente.');
+            }
         } else {
-            $this->command->info('Cliente "CLIENTE VARIOS" ya existe.');
+            if ($this->command) {
+                $this->command->info('Cliente "CLIENTE VARIOS" ya existe.');
+            }
         }
     }
 }

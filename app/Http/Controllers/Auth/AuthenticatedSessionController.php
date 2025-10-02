@@ -55,7 +55,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // Redirigir directamente a crear venta después del login
+        return redirect()->intended(route('sales.create', absolute: false));
     }
 
     /**

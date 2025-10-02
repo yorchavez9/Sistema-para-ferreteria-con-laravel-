@@ -61,6 +61,9 @@ class FerreteriaRoleSeeder extends Seeder
 
             // Caja
             'cashier-list', 'cashier-reports',
+
+            // Configuración
+            'settings-view', 'settings-edit',
         ];
         $managerRole->givePermissionTo($managerPermissions);
 
