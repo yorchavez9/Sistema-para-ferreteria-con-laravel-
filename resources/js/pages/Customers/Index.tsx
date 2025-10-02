@@ -319,57 +319,6 @@ export default function CustomersIndex({ customers, stats, filters }: CustomersI
                     </Link>
                 </div>
 
-                {/* Estadísticas */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Total Clientes</p>
-                                    <p className="text-base font-bold mt-0.5">{stats.total_customers}</p>
-                                </div>
-                                <Users className="h-5 w-5 text-blue-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Activos</p>
-                                    <p className="text-base font-bold text-green-600 mt-0.5">{stats.active_customers}</p>
-                                </div>
-                                <CheckCircle className="h-5 w-5 text-green-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Personales</p>
-                                    <p className="text-base font-bold text-amber-600 mt-0.5">{stats.personal_customers}</p>
-                                </div>
-                                <UserCircle className="h-5 w-5 text-amber-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Empresas</p>
-                                    <p className="text-base font-bold text-purple-600 mt-0.5">{stats.business_customers}</p>
-                                </div>
-                                <Building2 className="h-5 w-5 text-purple-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
                 {/* Barra de Búsqueda */}
                 <Card>
                     <CardContent className="pt-6">

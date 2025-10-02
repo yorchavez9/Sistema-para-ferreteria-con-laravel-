@@ -28,6 +28,19 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
+    Alert,
+    AlertDescription,
+    AlertTitle,
+} from '@/components/ui/alert';
+import {
     ArrowLeft,
     Save,
     User,
@@ -36,7 +49,12 @@ import {
     X,
     Plus,
     Minus,
-    Package
+    Package,
+    AlertTriangle,
+    TrendingUp,
+    TrendingDown,
+    AlertCircle,
+    Info
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import Swal from 'sweetalert2';
@@ -116,6 +134,17 @@ interface SaleEditProps {
     available_series: DocumentSeries[];
 }
 
+interface InventoryChange {
+    product_name: string;
+    product_code: string;
+    type: 'added' | 'removed' | 'increased' | 'decreased' | 'unchanged';
+    old_quantity?: number;
+    new_quantity?: number;
+    difference?: number;
+    stock_impact: number; // positivo = retorna stock, negativo = reduce stock
+    branch_change?: boolean;
+}
+
 export default function SaleEdit({ sale, branches, available_series }: SaleEditProps) {
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -154,6 +183,12 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
     const [products, setProducts] = useState<SaleDetail[]>(sale.details);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
+    const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+    const [inventoryChanges, setInventoryChanges] = useState<InventoryChange[]>([]);
+
+    // Guardar detalles originales para comparación
+    const originalProducts = useMemo(() => sale.details, [sale.details]);
+    const originalBranchId = sale.branch_id;
 
     // Búsqueda de productos
     const [searchTerm, setSearchTerm] = useState('');
@@ -301,6 +336,90 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
         return Math.max(0, paid - total);
     }, [formData.amount_paid, total]);
 
+    // Calcular cambios de inventario
+    const calculateInventoryChanges = (): InventoryChange[] => {
+        const changes: InventoryChange[] = [];
+        const currentBranchId = parseInt(formData.branch_id);
+        const branchChanged = currentBranchId !== originalBranchId;
+
+        // Crear mapa de productos originales
+        const originalMap = new Map(
+            originalProducts.map(p => [p.product_id, p])
+        );
+
+        // Crear mapa de productos actuales
+        const currentMap = new Map(
+            products.map(p => [p.product_id, p])
+        );
+
+        // Verificar productos actuales
+        products.forEach(currentProduct => {
+            const originalProduct = originalMap.get(currentProduct.product_id);
+
+            if (!originalProduct) {
+                // Producto nuevo agregado
+                changes.push({
+                    product_name: currentProduct.product.name,
+                    product_code: currentProduct.product.code,
+                    type: 'added',
+                    new_quantity: currentProduct.quantity,
+                    stock_impact: -currentProduct.quantity,
+                });
+            } else if (currentProduct.quantity !== originalProduct.quantity || branchChanged) {
+                // Producto con cambio de cantidad o cambio de sucursal
+                const diff = currentProduct.quantity - originalProduct.quantity;
+
+                if (branchChanged) {
+                    changes.push({
+                        product_name: currentProduct.product.name,
+                        product_code: currentProduct.product.code,
+                        type: 'unchanged',
+                        old_quantity: originalProduct.quantity,
+                        new_quantity: currentProduct.quantity,
+                        stock_impact: 0, // Se devuelve en sucursal original y se descuenta en nueva
+                        branch_change: true,
+                    });
+                } else if (diff > 0) {
+                    changes.push({
+                        product_name: currentProduct.product.name,
+                        product_code: currentProduct.product.code,
+                        type: 'increased',
+                        old_quantity: originalProduct.quantity,
+                        new_quantity: currentProduct.quantity,
+                        difference: diff,
+                        stock_impact: -diff,
+                    });
+                } else if (diff < 0) {
+                    changes.push({
+                        product_name: currentProduct.product.name,
+                        product_code: currentProduct.product.code,
+                        type: 'decreased',
+                        old_quantity: originalProduct.quantity,
+                        new_quantity: currentProduct.quantity,
+                        difference: Math.abs(diff),
+                        stock_impact: Math.abs(diff),
+                    });
+                }
+            }
+
+            // Remover del mapa original
+            originalMap.delete(currentProduct.product_id);
+        });
+
+        // Los productos que quedaron en el mapa original fueron eliminados
+        originalMap.forEach(removedProduct => {
+            changes.push({
+                product_name: removedProduct.product.name,
+                product_code: removedProduct.product.code,
+                type: 'removed',
+                old_quantity: removedProduct.quantity,
+                stock_impact: removedProduct.quantity,
+            });
+        });
+
+        return changes;
+    };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setErrors({});
@@ -321,13 +440,27 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
             return;
         }
 
+        // Calcular y mostrar preview de cambios
+        const changes = calculateInventoryChanges();
+
+        if (changes.length > 0) {
+            setInventoryChanges(changes);
+            setShowConfirmDialog(true);
+        } else {
+            // No hay cambios, proceder directamente
+            submitSale();
+        }
+    };
+
+    const submitSale = () => {
         setSubmitting(true);
+        setShowConfirmDialog(false);
 
         const submitData = {
             ...formData,
-            customer_id: selectedCustomer.id,
+            customer_id: selectedCustomer!.id,
             discount: parseFloat(formData.discount) || 0,
-            amount_paid: paid,
+            amount_paid: parseFloat(formData.amount_paid) || 0,
             products: products.map(p => ({
                 product_id: p.product_id,
                 quantity: p.quantity,
@@ -339,7 +472,7 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
             onSuccess: () => {
                 Swal.fire({
                     title: '¡Éxito!',
-                    text: 'Venta actualizada correctamente',
+                    text: 'Venta actualizada correctamente. El inventario ha sido ajustado.',
                     icon: 'success',
                 }).then(() => {
                     router.visit(`/sales/${sale.id}`);
@@ -385,6 +518,20 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
                         </div>
                     </div>
                 </div>
+
+                {/* Alerta de edición */}
+                <Alert className="border-amber-500 bg-amber-50">
+                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                    <AlertTitle className="text-amber-900">Edición de Venta Pendiente</AlertTitle>
+                    <AlertDescription className="text-amber-800">
+                        Esta venta está en estado <strong>pendiente</strong>. Los cambios que realices afectarán automáticamente el inventario.
+                        {parseInt(formData.branch_id) !== originalBranchId && (
+                            <span className="block mt-1 font-semibold">
+                                ⚠️ Has cambiado la sucursal: el stock se transferirá entre sucursales.
+                            </span>
+                        )}
+                    </AlertDescription>
+                </Alert>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Sale Information */}
@@ -635,16 +782,45 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {products.map((item, index) => (
-                                                <TableRow key={index}>
-                                                    <TableCell>
-                                                        <div>
-                                                            <p className="font-medium">{item.product.name}</p>
-                                                            <p className="text-sm text-muted-foreground">
-                                                                {item.product.code} | {item.product.unit}
-                                                            </p>
-                                                        </div>
-                                                    </TableCell>
+                                            {products.map((item, index) => {
+                                                const originalProduct = originalProducts.find(p => p.product_id === item.product_id);
+                                                const isNew = !originalProduct;
+                                                const quantityChanged = originalProduct && originalProduct.quantity !== item.quantity;
+                                                const currentStock = item.product.stock || 0;
+                                                const lowStock = currentStock < item.quantity;
+
+                                                return (
+                                                    <TableRow key={index} className={isNew ? 'bg-green-50' : quantityChanged ? 'bg-blue-50' : ''}>
+                                                        <TableCell>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center gap-2">
+                                                                    <p className="font-medium">{item.product.name}</p>
+                                                                    {isNew && (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
+                                                                            <Plus className="h-3 w-3" /> Nuevo
+                                                                        </span>
+                                                                    )}
+                                                                    {quantityChanged && !isNew && (
+                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
+                                                                            <AlertCircle className="h-3 w-3" /> Modificado
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                <p className="text-sm text-muted-foreground">
+                                                                    {item.product.code} | {item.product.unit}
+                                                                </p>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`text-xs font-medium ${lowStock ? 'text-red-600' : currentStock < 10 ? 'text-amber-600' : 'text-green-600'}`}>
+                                                                        Stock: {currentStock} {item.product.unit}
+                                                                    </span>
+                                                                    {lowStock && (
+                                                                        <span className="inline-flex items-center gap-1 text-xs text-red-600">
+                                                                            <AlertTriangle className="h-3 w-3" /> Stock insuficiente
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <Button
@@ -700,7 +876,8 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
                                                         </Button>
                                                     </TableCell>
                                                 </TableRow>
-                                            ))}
+                                                );
+                                            })}
                                         </TableBody>
                                     </Table>
                                 </div>
@@ -829,6 +1006,166 @@ export default function SaleEdit({ sale, branches, available_series }: SaleEditP
                 onSelectProduct={handleAddProduct}
                 branchId={parseInt(formData.branch_id)}
             />
+
+            {/* Diálogo de confirmación con preview de cambios */}
+            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                            Confirmar Cambios en la Venta
+                        </DialogTitle>
+                        <DialogDescription>
+                            Los siguientes cambios afectarán el inventario. Por favor, revisa cuidadosamente antes de continuar.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4">
+                        {/* Alerta de cambio de sucursal */}
+                        {parseInt(formData.branch_id) !== originalBranchId && (
+                            <Alert variant="default" className="border-blue-500 bg-blue-50">
+                                <Info className="h-4 w-4 text-blue-500" />
+                                <AlertTitle>Cambio de Sucursal</AlertTitle>
+                                <AlertDescription>
+                                    Se devolverá el stock a <strong>{branches.find(b => b.id === originalBranchId)?.name}</strong> y
+                                    se descontará de <strong>{branches.find(b => b.id === parseInt(formData.branch_id))?.name}</strong>
+                                </AlertDescription>
+                            </Alert>
+                        )}
+
+                        {/* Tabla de cambios */}
+                        <div className="border rounded-lg">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Producto</TableHead>
+                                        <TableHead className="text-center">Cambio</TableHead>
+                                        <TableHead className="text-center">Cantidad</TableHead>
+                                        <TableHead className="text-center">Impacto en Stock</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {inventoryChanges.map((change, index) => (
+                                        <TableRow key={index}>
+                                            <TableCell>
+                                                <div>
+                                                    <p className="font-medium">{change.product_name}</p>
+                                                    <p className="text-sm text-muted-foreground">{change.product_code}</p>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {change.type === 'added' && (
+                                                    <span className="inline-flex items-center gap-1 text-green-600 font-medium">
+                                                        <Plus className="h-4 w-4" /> Agregado
+                                                    </span>
+                                                )}
+                                                {change.type === 'removed' && (
+                                                    <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+                                                        <X className="h-4 w-4" /> Eliminado
+                                                    </span>
+                                                )}
+                                                {change.type === 'increased' && (
+                                                    <span className="inline-flex items-center gap-1 text-blue-600 font-medium">
+                                                        <TrendingUp className="h-4 w-4" /> Incrementado
+                                                    </span>
+                                                )}
+                                                {change.type === 'decreased' && (
+                                                    <span className="inline-flex items-center gap-1 text-orange-600 font-medium">
+                                                        <TrendingDown className="h-4 w-4" /> Disminuido
+                                                    </span>
+                                                )}
+                                                {change.type === 'unchanged' && change.branch_change && (
+                                                    <span className="inline-flex items-center gap-1 text-purple-600 font-medium">
+                                                        <AlertCircle className="h-4 w-4" /> Transferido
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-center font-mono">
+                                                {change.type === 'added' && (
+                                                    <span className="text-green-600">+{change.new_quantity}</span>
+                                                )}
+                                                {change.type === 'removed' && (
+                                                    <span className="text-red-600">-{change.old_quantity}</span>
+                                                )}
+                                                {(change.type === 'increased' || change.type === 'decreased') && (
+                                                    <span>
+                                                        {change.old_quantity} → {change.new_quantity}
+                                                        <span className={change.type === 'increased' ? 'text-blue-600 ml-2' : 'text-orange-600 ml-2'}>
+                                                            ({change.type === 'increased' ? '+' : '-'}{change.difference})
+                                                        </span>
+                                                    </span>
+                                                )}
+                                                {change.type === 'unchanged' && change.branch_change && (
+                                                    <span>{change.new_quantity}</span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {change.stock_impact > 0 ? (
+                                                    <span className="inline-flex items-center gap-1 text-green-600 font-semibold">
+                                                        <TrendingUp className="h-4 w-4" />
+                                                        +{change.stock_impact} unidades
+                                                    </span>
+                                                ) : change.stock_impact < 0 ? (
+                                                    <span className="inline-flex items-center gap-1 text-red-600 font-semibold">
+                                                        <TrendingDown className="h-4 w-4" />
+                                                        {change.stock_impact} unidades
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-muted-foreground">Sin cambio neto</span>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {/* Resumen de impacto */}
+                        <Alert>
+                            <AlertCircle className="h-4 w-4" />
+                            <AlertTitle>Resumen de Impacto</AlertTitle>
+                            <AlertDescription>
+                                <ul className="list-disc list-inside space-y-1 mt-2">
+                                    <li>Productos agregados: <strong>{inventoryChanges.filter(c => c.type === 'added').length}</strong></li>
+                                    <li>Productos eliminados: <strong>{inventoryChanges.filter(c => c.type === 'removed').length}</strong></li>
+                                    <li>Productos modificados: <strong>{inventoryChanges.filter(c => c.type === 'increased' || c.type === 'decreased').length}</strong></li>
+                                    {parseInt(formData.branch_id) !== originalBranchId && (
+                                        <li className="text-blue-600">Productos transferidos entre sucursales: <strong>{inventoryChanges.filter(c => c.branch_change).length}</strong></li>
+                                    )}
+                                </ul>
+                            </AlertDescription>
+                        </Alert>
+
+                        {/* Advertencia final */}
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Advertencia</AlertTitle>
+                            <AlertDescription>
+                                Esta acción ajustará automáticamente el inventario. Asegúrate de que los cambios sean correctos antes de continuar.
+                            </AlertDescription>
+                        </Alert>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowConfirmDialog(false)}
+                            disabled={submitting}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            onClick={submitSale}
+                            disabled={submitting}
+                        >
+                            <Save className="h-4 w-4 mr-2" />
+                            {submitting ? 'Guardando...' : 'Confirmar y Guardar'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

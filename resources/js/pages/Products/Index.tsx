@@ -307,57 +307,6 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
                     </Link>
                 </div>
 
-                {/* Estadísticas */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Total Productos</p>
-                                    <p className="text-base font-bold mt-0.5">{stats.total_products}</p>
-                                </div>
-                                <Package className="h-5 w-5 text-blue-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Activos</p>
-                                    <p className="text-base font-bold text-green-600 mt-0.5">{stats.active_products}</p>
-                                </div>
-                                <CheckCircle className="h-5 w-5 text-green-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Stock Bajo</p>
-                                    <p className="text-base font-bold text-amber-600 mt-0.5">{stats.low_stock}</p>
-                                </div>
-                                <AlertTriangle className="h-5 w-5 text-amber-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Sin Stock</p>
-                                    <p className="text-base font-bold text-red-600 mt-0.5">{stats.out_of_stock}</p>
-                                </div>
-                                <XCircle className="h-5 w-5 text-red-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
                 {/* Barra de Búsqueda */}
                 <Card>
                     <CardContent className="pt-6">

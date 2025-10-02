@@ -280,56 +280,6 @@ export default function BrandsIndex({ brands, stats, filters }: BrandsIndexProps
                     </Link>
                 </div>
 
-                {/* Estadísticas */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Total Marcas</p>
-                                    <p className="text-base font-bold mt-0.5">{stats.total_brands}</p>
-                                </div>
-                                <Tag className="h-5 w-5 text-blue-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Activas</p>
-                                    <p className="text-base font-bold text-green-600 mt-0.5">{stats.active_brands}</p>
-                                </div>
-                                <CheckCircle className="h-5 w-5 text-green-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Con Productos</p>
-                                    <p className="text-base font-bold text-purple-600 mt-0.5">{stats.with_products}</p>
-                                </div>
-                                <Package className="h-5 w-5 text-purple-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Sin Productos</p>
-                                    <p className="text-base font-bold text-orange-600 mt-0.5">{stats.without_products}</p>
-                                </div>
-                                <XCircle className="h-5 w-5 text-orange-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
 
                 {/* Barra de Búsqueda */}
                 <Card>

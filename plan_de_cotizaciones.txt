@@ -1,0 +1,114 @@
+4. DISEÑO DEL MÓDULO DE COTIZACIONES
+
+  Basándome en el análisis, este es el diseño propuesto:
+
+  A. TABLAS DE BASE DE DATOS
+
+  quotes (cotizaciones)
+  - id
+  - quote_number (generado: QT-00000001)
+  - customer_id (nullable)
+  - branch_id
+  - user_id (vendedor)
+  - quote_date
+  - expiration_date (validez de la cotización)
+  - status (pendiente, aprobada, rechazada, convertida, vencida)
+  - subtotal
+  - tax (IGV)
+  - discount
+  - total
+  - notes
+  - converted_to_sale_id (nullable - si se convirtió a venta)
+  - converted_at (nullable)
+  - timestamps
+  - soft_deletes
+
+  quote_details
+  - id
+  - quote_id
+  - product_id
+  - quantity
+  - unit_price
+  - subtotal
+  - discount
+  - timestamps
+
+  B. FUNCIONALIDADES PRINCIPALES
+
+  1. Crear Cotización
+    - Interfaz similar a Sales/Create.tsx
+    - Seleccionar cliente (opcional)
+    - Agregar productos con precios editables
+    - Fecha de expiración configurable
+    - Descuentos por producto y general
+    - Generar PDF para enviar al cliente
+  2. Listar Cotizaciones
+    - Tabla responsive como Sales/Index.tsx
+    - Filtros: estado, sucursal, cliente, rango de fechas
+    - Búsqueda en tiempo real
+    - Estados con badges de colores
+    - Botón para convertir a venta
+  3. Ver Cotización
+    - Detalles completos
+    - Productos cotizados
+    - Botones de acción:
+        - Editar (si está pendiente)
+      - Convertir a Venta
+      - Duplicar
+      - Enviar por email
+      - Descargar PDF
+      - Anular
+  4. Convertir a Venta
+    - Copiar todos los datos de la cotización
+    - Redireccionar a Sales/Create con datos pre-llenados
+    - Marcar cotización como "convertida"
+    - Vincular venta con cotización
+  5. PDF de Cotización
+    - Similar a sale-a4.blade.php
+    - Marca de agua "COTIZACIÓN"
+    - Mostrar validez/expiración
+    - 4 formatos (A4, A5, 80mm, 50mm)
+
+  C. ESTADOS DE COTIZACIÓN
+
+  - pendiente - Creada, esperando respuesta del cliente
+  - aprobada - Cliente aprobó pero aún no se convirtió a venta
+  - rechazada - Cliente rechazó la cotización
+  - convertida - Se convirtió en venta
+  - vencida - Pasó la fecha de expiración
+
+  D. PERMISOS REQUERIDOS
+
+  'quote-list'
+  'quote-create'
+  'quote-edit'
+  'quote-delete'
+  'quote-convert' // Convertir a venta
+
+  E. RUTAS
+
+  // web.php
+  Route::resource('quotes', QuoteController::class);
+  Route::post('quotes/{quote}/convert', [QuoteController::class, 'convertToSale'])->name('quotes.convert');
+  Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])->name('quotes.duplicate');
+  Route::get('quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->name('quotes.pdf');
+  Route::post('quotes/{quote}/send-email', [QuoteController::class, 'sendEmail'])->name('quotes.send-email');
+
+  F. NAVEGACIÓN
+
+  Ya está en el sidebar (líneas 113-116 de app-sidebar.tsx):
+  {
+      title: 'Cotizaciones',
+      href: '/quotes',
+      icon: Calculator,
+  }
+
+  ---
+  5. PLAN DE IMPLEMENTACIÓN
+
+  El plan está en el todo list, listos para implementar:
+
+  ✅ Análisis completo📋 Siguiente: Implementar migración y modelo📋 Crear controlador📋 Implementar vistas React
+
+  ---
+  ¿Quieres que proceda con la implementación del módulo de cotizaciones siguiendo este diseño?

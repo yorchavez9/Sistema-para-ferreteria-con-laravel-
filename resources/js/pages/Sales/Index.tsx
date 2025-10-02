@@ -339,62 +339,6 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                     </Link>
                 </div>
 
-                {/* Estadísticas */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Total Ventas</p>
-                                    <p className="text-base font-bold mt-0.5">{stats.total_sales}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        {formatCurrency(stats.total_amount)}
-                                    </p>
-                                </div>
-                                <ShoppingCart className="h-5 w-5 text-blue-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Pendientes</p>
-                                    <p className="text-base font-bold text-amber-600 mt-0.5">{stats.pending}</p>
-                                </div>
-                                <Calendar className="h-5 w-5 text-amber-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Pagadas</p>
-                                    <p className="text-base font-bold text-green-600 mt-0.5">{stats.paid}</p>
-                                </div>
-                                <DollarSign className="h-5 w-5 text-green-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Créditos</p>
-                                    <p className="text-base font-bold text-orange-600 mt-0.5">{stats.credit_sales}</p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Saldo: {formatCurrency(stats.credit_balance)}
-                                    </p>
-                                </div>
-                                <CreditCard className="h-5 w-5 text-orange-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
 
                 {/* Barra de Búsqueda */}
                 <Card>

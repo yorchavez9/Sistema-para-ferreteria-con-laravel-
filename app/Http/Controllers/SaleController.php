@@ -396,18 +396,11 @@ class SaleController extends Controller
 
         DB::beginTransaction();
         try {
-            // Verificar stock disponible para cada producto
-            foreach ($validated['products'] as $productData) {
-                $inventory = Inventory::where('product_id', $productData['product_id'])
-                    ->where('branch_id', $validated['branch_id'])
-                    ->first();
+            // PASO 1: Ajustar inventario comparando detalles originales vs nuevos
+            // Esto devuelve stock de productos eliminados y descuenta stock de productos nuevos
+            $sale->adjustInventoryOnUpdate($validated['products'], $validated['branch_id']);
 
-                if (!$inventory || $inventory->current_stock < $productData['quantity']) {
-                    $product = Product::find($productData['product_id']);
-                    throw new \Exception("Stock insuficiente para el producto: {$product->name}");
-                }
-            }
-
+            // PASO 2: Actualizar datos de la venta
             $sale->update([
                 'customer_id' => $validated['customer_id'],
                 'branch_id' => $validated['branch_id'],
@@ -418,10 +411,10 @@ class SaleController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            // Eliminar detalles anteriores
+            // PASO 3: Eliminar detalles anteriores
             $sale->details()->delete();
 
-            // Crear nuevos detalles
+            // PASO 4: Crear nuevos detalles
             foreach ($validated['products'] as $productData) {
                 $sale->details()->create([
                     'product_id' => $productData['product_id'],
@@ -431,7 +424,7 @@ class SaleController extends Controller
                 ]);
             }
 
-            // Recalcular totales
+            // PASO 5: Recalcular totales
             $sale->calculateTotals();
             $sale->change_amount = max(0, $validated['amount_paid'] - $sale->total);
             $sale->save();
@@ -439,10 +432,10 @@ class SaleController extends Controller
             DB::commit();
 
             return redirect()->route('sales.show', $sale)
-                ->with('success', 'Venta actualizada exitosamente.');
+                ->with('success', 'Venta actualizada exitosamente. El inventario ha sido ajustado correctamente.');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => $e->getMessage()]);
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
         }
     }
 

@@ -186,6 +186,92 @@ class Sale extends Model
         $this->save();
     }
 
+    /**
+     * Ajustar inventario al editar venta
+     * Compara los detalles originales con los nuevos y ajusta el inventario
+     */
+    public function adjustInventoryOnUpdate(array $newDetails, $newBranchId): void
+    {
+        if ($this->status !== 'pendiente') {
+            throw new \Exception('Solo se puede ajustar inventario en ventas pendientes.');
+        }
+
+        // Obtener detalles originales antes de cualquier cambio
+        $originalDetails = $this->details->keyBy('product_id');
+        $originalBranchId = $this->branch_id;
+
+        // Procesar cada producto nuevo
+        foreach ($newDetails as $newDetail) {
+            $productId = $newDetail['product_id'];
+            $newQuantity = $newDetail['quantity'];
+
+            // Buscar si el producto existía en la venta original
+            $originalDetail = $originalDetails->get($productId);
+
+            if ($originalDetail) {
+                // El producto ya existía, calcular diferencia
+                $quantityDiff = $newQuantity - $originalDetail->quantity;
+
+                if ($quantityDiff != 0) {
+                    // Si hay cambio de sucursal, primero devolver al inventario original
+                    if ($originalBranchId != $newBranchId) {
+                        // Devolver cantidad original a la sucursal original
+                        $this->adjustInventoryStock($productId, $originalBranchId, $originalDetail->quantity);
+
+                        // Descontar nueva cantidad de la nueva sucursal
+                        $this->adjustInventoryStock($productId, $newBranchId, -$newQuantity);
+                    } else {
+                        // Misma sucursal, solo ajustar la diferencia
+                        $this->adjustInventoryStock($productId, $newBranchId, -$quantityDiff);
+                    }
+                }
+
+                // Marcar como procesado
+                $originalDetails->forget($productId);
+            } else {
+                // Producto nuevo, descontar del inventario
+                $this->adjustInventoryStock($productId, $newBranchId, -$newQuantity);
+            }
+        }
+
+        // Los productos que quedaron en $originalDetails fueron eliminados
+        // Devolver su cantidad al inventario
+        foreach ($originalDetails as $removedDetail) {
+            $returnBranchId = ($originalBranchId != $newBranchId) ? $originalBranchId : $newBranchId;
+            $this->adjustInventoryStock($removedDetail->product_id, $returnBranchId, $removedDetail->quantity);
+        }
+    }
+
+    /**
+     * Ajustar stock de inventario (positivo = incrementar, negativo = decrementar)
+     */
+    private function adjustInventoryStock($productId, $branchId, $adjustment): void
+    {
+        if ($adjustment == 0) return;
+
+        $inventory = Inventory::where('product_id', $productId)
+            ->where('branch_id', $branchId)
+            ->first();
+
+        if (!$inventory) {
+            $product = Product::find($productId);
+            throw new \Exception("El producto {$product->name} no tiene inventario en esta sucursal.");
+        }
+
+        // Si es decremento (venta), verificar stock disponible
+        if ($adjustment < 0) {
+            $requiredStock = abs($adjustment);
+            if ($inventory->current_stock < $requiredStock) {
+                $product = Product::find($productId);
+                throw new \Exception("Stock insuficiente para {$product->name}. Disponible: {$inventory->current_stock}, Requerido: {$requiredStock}");
+            }
+        }
+
+        $inventory->current_stock += $adjustment;
+        $inventory->last_movement_date = now();
+        $inventory->save();
+    }
+
     // Scopes
     public function scopePending($query)
     {

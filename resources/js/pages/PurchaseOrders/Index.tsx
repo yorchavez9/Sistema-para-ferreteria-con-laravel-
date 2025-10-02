@@ -256,55 +256,6 @@ export default function PurchaseOrdersIndex({ orders, stats, suppliers, branches
                     </Link>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Total Órdenes</p>
-                                    <p className="text-base font-bold mt-0.5">{stats.total_orders}</p>
-                                    <p className="text-xs text-muted-foreground">{formatCurrency(stats.total_amount)}</p>
-                                </div>
-                                <ShoppingCart className="h-5 w-5 text-blue-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Pendientes</p>
-                                    <p className="text-base font-bold mt-0.5 text-amber-600">{stats.pending}</p>
-                                    <p className="text-xs text-muted-foreground">{formatCurrency(stats.pending_amount)}</p>
-                                </div>
-                                <Clock className="h-5 w-5 text-amber-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Recibidas</p>
-                                    <p className="text-base font-bold mt-0.5 text-green-600">{stats.received}</p>
-                                </div>
-                                <CheckCircle className="h-5 w-5 text-green-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Parciales</p>
-                                    <p className="text-base font-bold mt-0.5 text-blue-600">{stats.partial}</p>
-                                </div>
-                                <TrendingUp className="h-5 w-5 text-blue-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
 
                 {/* Filters */}
                 <Card>
@@ -364,7 +315,8 @@ export default function PurchaseOrdersIndex({ orders, stats, suppliers, branches
                 </Card>
 
                 {/* Table */}
-                <div className="rounded-md border">
+                <Card className='p-5'>
+                    
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -485,7 +437,8 @@ export default function PurchaseOrdersIndex({ orders, stats, suppliers, branches
                             )}
                         </TableBody>
                     </Table>
-                </div>
+              
+                </Card>
 
                 {/* Pagination */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">

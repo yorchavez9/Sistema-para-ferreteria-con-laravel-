@@ -290,56 +290,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                     </Link>
                 </div>
 
-                {/* Estadísticas */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Total Categorías</p>
-                                    <p className="text-base font-bold mt-0.5">{stats.total_categories}</p>
-                                </div>
-                                <FolderTree className="h-5 w-5 text-blue-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Activas</p>
-                                    <p className="text-base font-bold text-green-600 mt-0.5">{stats.active_categories}</p>
-                                </div>
-                                <FolderOpen className="h-5 w-5 text-green-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Principales</p>
-                                    <p className="text-base font-bold text-purple-600 mt-0.5">{stats.main_categories}</p>
-                                </div>
-                                <Folder className="h-5 w-5 text-purple-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs text-muted-foreground uppercase font-medium">Subcategorías</p>
-                                    <p className="text-base font-bold text-orange-600 mt-0.5">{stats.subcategories}</p>
-                                </div>
-                                <FolderTree className="h-5 w-5 text-orange-600 opacity-80" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
 
                 {/* Barra de Búsqueda */}
                 <Card>

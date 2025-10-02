@@ -81,6 +81,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Ventas - Resource routes
     Route::resource('sales', \App\Http\Controllers\SaleController::class);
 
+    // Cotizaciones - Rutas personalizadas ANTES del resource
+    Route::post('quotes/{quote}/duplicate', [\App\Http\Controllers\QuoteController::class, 'duplicate'])->name('quotes.duplicate');
+    Route::get('quotes/{quote}/pdf', [\App\Http\Controllers\QuoteController::class, 'pdf'])->name('quotes.pdf');
+
+    // Cotizaciones - Resource routes
+    Route::resource('quotes', \App\Http\Controllers\QuoteController::class)->middleware([
+        'permission:quote-list|quote-create|quote-edit|quote-delete'
+    ]);
+
     // Pagos de Ventas a Crédito
     Route::get('payments', [\App\Http\Controllers\PaymentController::class, 'index'])->name('payments.index');
     Route::get('payments/sales/{sale}', [\App\Http\Controllers\PaymentController::class, 'show'])->name('payments.show');

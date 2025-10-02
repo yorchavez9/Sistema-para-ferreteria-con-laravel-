@@ -269,65 +269,6 @@ export default function SuppliersIndex({ suppliers, stats, filters }: SuppliersI
                     </Link>
                 </div>
 
-                {/* Stats Cards */}
-                <div className="grid gap-4 md:grid-cols-4">
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">
-                                        Total Proveedores
-                                    </p>
-                                    <p className="text-2xl font-bold">{stats.total_suppliers}</p>
-                                </div>
-                                <Users className="h-8 w-8 text-muted-foreground" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">
-                                        Proveedores Activos
-                                    </p>
-                                    <p className="text-2xl font-bold text-green-600">{stats.active_suppliers}</p>
-                                </div>
-                                <CheckCircle className="h-8 w-8 text-green-600" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">
-                                        Con RUC
-                                    </p>
-                                    <p className="text-2xl font-bold text-blue-600">{stats.with_ruc}</p>
-                                </div>
-                                <FileText className="h-8 w-8 text-blue-600" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="py-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-muted-foreground">
-                                        Con Crédito
-                                    </p>
-                                    <p className="text-2xl font-bold text-orange-600">{stats.credit_suppliers}</p>
-                                </div>
-                                <CreditCard className="h-8 w-8 text-orange-600" />
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
                 {/* Search */}
                 <Card>
                     <CardContent className="pt-6">
