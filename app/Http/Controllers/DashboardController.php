@@ -9,8 +9,10 @@ use App\Models\Inventory;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Supplier;
+use App\Models\Sale;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -33,31 +35,87 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        // Productos más vendidos (placeholder - implementar cuando tengamos ventas)
-        $topProducts = Product::with(['category', 'brand'])
-            ->active()
-            ->limit(10)
-            ->get();
-
         // Valor total del inventario por sucursal
         $inventoryByBranch = Branch::with('inventory')
             ->active()
             ->get()
             ->map(function ($branch) {
                 return [
-                    'branch_name' => $branch->name,
-                    'total_value' => $branch->inventory->sum(function ($item) {
+                    'name' => $branch->name,
+                    'value' => $branch->inventory->sum(function ($item) {
                         return $item->current_stock * $item->cost_price;
                     }),
-                    'total_items' => $branch->inventory->sum('current_stock'),
+                    'items' => $branch->inventory->sum('current_stock'),
                 ];
             });
+
+        // Productos por categoría para gráfico de donas
+        $productsByCategory = Category::withCount('products')
+            ->having('products_count', '>', 0)
+            ->get()
+            ->map(function ($category) {
+                return [
+                    'name' => $category->name,
+                    'value' => $category->products_count,
+                ];
+            });
+
+        // Inventario por marca para gráfico de barras
+        $inventoryByBrand = Brand::with(['products.inventory'])
+            ->get()
+            ->map(function ($brand) {
+                $totalStock = $brand->products->flatMap->inventory->sum('current_stock');
+                return [
+                    'name' => $brand->name,
+                    'stock' => $totalStock,
+                ];
+            })
+            ->filter(fn($item) => $item['stock'] > 0)
+            ->sortByDesc('stock')
+            ->take(10)
+            ->values();
+
+        // Estado del stock para gráfico de donas
+        $stockStatus = [
+            [
+                'name' => 'Stock Normal',
+                'value' => Inventory::normalStock()->count(),
+            ],
+            [
+                'name' => 'Stock Bajo',
+                'value' => Inventory::lowStock()->count(),
+            ],
+            [
+                'name' => 'Sin Stock',
+                'value' => Inventory::outOfStock()->count(),
+            ],
+        ];
+
+        // Ventas de los últimos 7 días (si existen)
+        $salesLastWeek = [];
+        if (class_exists('App\Models\Sale')) {
+            $salesLastWeek = Sale::where('sale_date', '>=', now()->subDays(7))
+                ->selectRaw('DATE(sale_date) as date, COUNT(*) as count, SUM(total) as total')
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get()
+                ->map(function ($sale) {
+                    return [
+                        'name' => \Carbon\Carbon::parse($sale->date)->format('d/m'),
+                        'ventas' => $sale->count,
+                        'monto' => round($sale->total, 2),
+                    ];
+                });
+        }
 
         return Inertia::render('dashboard', [
             'stats' => $stats,
             'lowStockProducts' => $lowStockProducts,
-            'topProducts' => $topProducts,
             'inventoryByBranch' => $inventoryByBranch,
+            'productsByCategory' => $productsByCategory,
+            'inventoryByBrand' => $inventoryByBrand,
+            'stockStatus' => $stockStatus,
+            'salesLastWeek' => $salesLastWeek,
         ]);
     }
 }

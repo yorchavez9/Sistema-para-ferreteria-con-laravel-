@@ -218,8 +218,9 @@ export default function UsersIndex({ users, stats, roles, branches, filters }: U
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Usuarios" />
 
-            {/* Estadísticas */}
-            <div className="grid gap-4 md:grid-cols-3 mb-6">
+            <div className="p-6 space-y-6">
+                {/* Estadísticas */}
+                <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Usuarios</CardTitle>
@@ -285,14 +286,14 @@ export default function UsersIndex({ users, stats, roles, branches, filters }: U
                             <div>
                                 <label className="text-sm font-medium mb-2 block">Rol</label>
                                 <Select
-                                    value={filterData.role_id}
-                                    onValueChange={(value) => setFilterData({ ...filterData, role_id: value })}
+                                    value={filterData.role_id || "all"}
+                                    onValueChange={(value) => setFilterData({ ...filterData, role_id: value === "all" ? "" : value })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todos los roles" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">Todos los roles</SelectItem>
+                                        <SelectItem value="all">Todos los roles</SelectItem>
                                         {roles.map((role) => (
                                             <SelectItem key={role.id} value={role.id.toString()}>
                                                 {role.name}
@@ -305,14 +306,14 @@ export default function UsersIndex({ users, stats, roles, branches, filters }: U
                             <div>
                                 <label className="text-sm font-medium mb-2 block">Sucursal</label>
                                 <Select
-                                    value={filterData.branch_id}
-                                    onValueChange={(value) => setFilterData({ ...filterData, branch_id: value })}
+                                    value={filterData.branch_id || "all"}
+                                    onValueChange={(value) => setFilterData({ ...filterData, branch_id: value === "all" ? "" : value })}
                                 >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Todas las sucursales" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">Todas las sucursales</SelectItem>
+                                        <SelectItem value="all">Todas las sucursales</SelectItem>
                                         {branches.map((branch) => (
                                             <SelectItem key={branch.id} value={branch.id.toString()}>
                                                 {branch.name}
@@ -499,6 +500,7 @@ export default function UsersIndex({ users, stats, roles, branches, filters }: U
                     )}
                 </CardContent>
             </Card>
+            </div>
         </AppLayout>
     );
 }

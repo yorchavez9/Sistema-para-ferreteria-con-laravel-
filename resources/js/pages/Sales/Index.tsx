@@ -429,16 +429,16 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                                 <div>
                                     <Label htmlFor="status">Estado</Label>
                                     <Select
-                                        value={filterData.status}
+                                        value={filterData.status || "all"}
                                         onValueChange={(value) =>
-                                            setFilterData({ ...filterData, status: value })
+                                            setFilterData({ ...filterData, status: value === "all" ? "" : value })
                                         }
                                     >
                                         <SelectTrigger id="status">
                                             <SelectValue placeholder="Todos" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
+                                            <SelectItem value="all">Todos</SelectItem>
                                             <SelectItem value="pendiente">Pendiente</SelectItem>
                                             <SelectItem value="pagado">Pagado</SelectItem>
                                             <SelectItem value="cancelado">Cancelado</SelectItem>
@@ -450,16 +450,16 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                                 <div>
                                     <Label htmlFor="document_type">Tipo Doc.</Label>
                                     <Select
-                                        value={filterData.document_type}
+                                        value={filterData.document_type || "all"}
                                         onValueChange={(value) =>
-                                            setFilterData({ ...filterData, document_type: value })
+                                            setFilterData({ ...filterData, document_type: value === "all" ? "" : value })
                                         }
                                     >
                                         <SelectTrigger id="document_type">
                                             <SelectValue placeholder="Todos" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
+                                            <SelectItem value="all">Todos</SelectItem>
                                             <SelectItem value="boleta">Boleta</SelectItem>
                                             <SelectItem value="factura">Factura</SelectItem>
                                             <SelectItem value="nota_venta">Nota Venta</SelectItem>
@@ -470,16 +470,16 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                                 <div>
                                     <Label htmlFor="payment_type">Tipo Pago</Label>
                                     <Select
-                                        value={filterData.payment_type}
+                                        value={filterData.payment_type || "all"}
                                         onValueChange={(value) =>
-                                            setFilterData({ ...filterData, payment_type: value })
+                                            setFilterData({ ...filterData, payment_type: value === "all" ? "" : value })
                                         }
                                     >
                                         <SelectTrigger id="payment_type">
                                             <SelectValue placeholder="Todos" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
+                                            <SelectItem value="all">Todos</SelectItem>
                                             <SelectItem value="contado">Contado</SelectItem>
                                             <SelectItem value="credito">Crédito</SelectItem>
                                         </SelectContent>
@@ -489,16 +489,16 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
                                 <div>
                                     <Label htmlFor="branch_id">Sucursal</Label>
                                     <Select
-                                        value={filterData.branch_id}
+                                        value={filterData.branch_id || "all"}
                                         onValueChange={(value) =>
-                                            setFilterData({ ...filterData, branch_id: value })
+                                            setFilterData({ ...filterData, branch_id: value === "all" ? "" : value })
                                         }
                                     >
                                         <SelectTrigger id="branch_id">
                                             <SelectValue placeholder="Todas" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">Todas</SelectItem>
+                                            <SelectItem value="all">Todas</SelectItem>
                                             {branches.map((branch) => (
                                                 <SelectItem key={branch.id} value={branch.id.toString()}>
                                                     {branch.name}

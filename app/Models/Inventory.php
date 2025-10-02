@@ -48,13 +48,20 @@ class Inventory extends Model
     // Scope para productos con stock bajo
     public function scopeLowStock($query)
     {
-        return $query->whereColumn('current_stock', '<=', 'min_stock');
+        return $query->whereColumn('current_stock', '<=', 'min_stock')
+            ->where('current_stock', '>', 0);
     }
 
     // Scope para productos sin stock
     public function scopeOutOfStock($query)
     {
         return $query->where('current_stock', 0);
+    }
+
+    // Scope para productos con stock normal
+    public function scopeNormalStock($query)
+    {
+        return $query->whereColumn('current_stock', '>', 'min_stock');
     }
 
     // Scope por sucursal

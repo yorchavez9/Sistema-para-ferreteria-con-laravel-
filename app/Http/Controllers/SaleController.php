@@ -143,12 +143,39 @@ class SaleController extends Controller
     {
         $settings = Setting::get();
 
-        // Validar si se requiere cliente para la venta
-        $customerRule = $settings->require_customer_for_sale ? 'required' : 'nullable';
+        // Validación básica primero
+        $basicValidation = $request->validate([
+            'document_type' => 'required|in:boleta,factura,nota_venta',
+            'details' => 'required|array|min:1',
+            'details.*.product_id' => 'required|exists:products,id',
+            'details.*.quantity' => 'required|integer|min:1',
+            'details.*.unit_price' => 'required|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+        ]);
 
+        // Calcular total para validación de cliente
+        $subtotal = 0;
+        foreach ($basicValidation['details'] as $detail) {
+            $subtotal += $detail['quantity'] * $detail['unit_price'];
+        }
+        $discount = $basicValidation['discount'] ?? 0;
+        $total = $subtotal - $discount;
+
+        // Determinar si el cliente es obligatorio según reglas SUNAT
+        $customerRule = 'nullable';
+        if ($basicValidation['document_type'] === 'factura') {
+            // Factura: Cliente siempre obligatorio
+            $customerRule = 'required';
+        } elseif ($basicValidation['document_type'] === 'boleta' && $total >= 700) {
+            // Boleta >= S/ 700: Cliente obligatorio
+            $customerRule = 'required';
+        }
+        // Nota de venta: Cliente opcional
+
+        // Validación completa
         $validated = $request->validate([
             'document_type' => 'required|in:boleta,factura,nota_venta',
-            'document_series_id' => 'nullable|exists:document_series,id', // Serie seleccionada (opcional)
+            'document_series_id' => 'nullable|exists:document_series,id',
             'customer_id' => $customerRule . '|exists:customers,id',
             'branch_id' => 'required|exists:branches,id',
             'sale_date' => 'required|date',

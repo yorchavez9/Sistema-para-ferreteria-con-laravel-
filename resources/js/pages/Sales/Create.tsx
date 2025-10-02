@@ -21,11 +21,12 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Trash2, ShoppingCart, Calendar, Package, User, List, DollarSign, Search, UserPlus, Loader2, CheckCircle, Minus, Printer } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ShoppingCart, Calendar, Package, User, List, DollarSign, Search, UserPlus, Loader2, CheckCircle, Minus, Printer, XCircle, AlertTriangle } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { showSuccess, showError } from '@/lib/sweet-alert';
 import ProductSelectorModal from '@/components/ProductSelectorModal';
 import axios from 'axios';
+import confetti from 'canvas-confetti';
 
 interface Customer {
     id: number;
@@ -93,6 +94,9 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
         ? documentSeries.boleta[0].id.toString()
         : '';
 
+    // Buscar cliente "Varios"
+    const clienteVarios = customers.find(c => c.document_number === '00000000');
+
     const [formData, setFormData] = useState({
         document_type: 'boleta',
         document_series_id: defaultSeriesId,
@@ -110,7 +114,7 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
     });
 
     const [details, setDetails] = useState<OrderDetail[]>([]);
-    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(clienteVarios || null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
@@ -122,6 +126,8 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
     const [showPdfModal, setShowPdfModal] = useState(false);
     const [pdfUrl, setPdfUrl] = useState<string>('');
     const [showProductModal, setShowProductModal] = useState(false);
+    const [showPriceCheckModal, setShowPriceCheckModal] = useState(false);
+    const [priceCheckSearch, setPriceCheckSearch] = useState('');
     const searchInputRef = useRef<HTMLInputElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -165,6 +171,18 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
             product.brand?.name.toLowerCase().includes(search)
         ).slice(0, 10);
     }, [products, searchTerm]);
+
+    // Filter products for price check modal
+    const priceCheckProducts = useMemo(() => {
+        if (!priceCheckSearch) return [];
+        const search = priceCheckSearch.toLowerCase();
+        return products.filter(product =>
+            product.name.toLowerCase().includes(search) ||
+            product.code.toLowerCase().includes(search) ||
+            product.category?.name.toLowerCase().includes(search) ||
+            product.brand?.name.toLowerCase().includes(search)
+        ).slice(0, 20);
+    }, [products, priceCheckSearch]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -400,6 +418,26 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
         }
     }, [total, formData.payment_type]);
 
+    // Auto-seleccionar Cliente Varios cuando sea apropiado
+    useEffect(() => {
+        if (formData.document_type === 'factura') {
+            // Para factura, limpiar el cliente si es "Varios"
+            if (selectedCustomer?.document_number === '00000000') {
+                setSelectedCustomer(null);
+            }
+        } else if (formData.document_type === 'boleta' && total >= 700) {
+            // Para boleta >= 700, limpiar el cliente si es "Varios"
+            if (selectedCustomer?.document_number === '00000000') {
+                setSelectedCustomer(null);
+            }
+        } else {
+            // Para nota de venta o boleta < 700, auto-seleccionar "Cliente Varios" si no hay cliente
+            if (!selectedCustomer && clienteVarios) {
+                setSelectedCustomer(clienteVarios);
+            }
+        }
+    }, [formData.document_type, total, clienteVarios, selectedCustomer]);
+
     // Obtener series disponibles según tipo de documento
     const availableSeries = useMemo(() => {
         if (formData.document_type === 'boleta') {
@@ -446,10 +484,21 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
         e.preventDefault();
         setErrors({});
 
-        if (!selectedCustomer) {
-            showError('Error de validación', 'Debes seleccionar un cliente.');
-            return;
+        // Validar cliente según reglas SUNAT
+        if (formData.document_type === 'factura') {
+            // Factura: Cliente siempre obligatorio
+            if (!selectedCustomer) {
+                showError('Error de validación', 'Para emitir una FACTURA debes seleccionar un cliente.');
+                return;
+            }
+        } else if (formData.document_type === 'boleta') {
+            // Boleta: Cliente obligatorio si el monto es >= S/ 700
+            if (total >= 700 && !selectedCustomer) {
+                showError('Error de validación', 'Para BOLETAS de S/ 700 o más debes seleccionar un cliente (Norma SUNAT).');
+                return;
+            }
         }
+        // Nota de venta: Cliente opcional (no se valida)
 
         if (details.length === 0) {
             showError('Error de validación', 'Debes agregar al menos un producto.');
@@ -511,7 +560,7 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
         const submitData = {
             document_type: formData.document_type,
             document_series_id: formData.document_type !== 'nota_venta' ? formData.document_series_id || null : null,
-            customer_id: selectedCustomer.id,
+            customer_id: selectedCustomer ? selectedCustomer.id : null,
             branch_id: formData.branch_id,
             sale_date: formData.sale_date,
             payment_method: formData.payment_method,
@@ -540,17 +589,30 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
 
                 setSaleData(response.data.sale);
 
+                // 🎉 Lanzar confetti cuando la venta se registra exitosamente
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+
                 // Cerrar modal de selección y resetear loading
                 setLoading(false);
                 setShowPrintSizeModal(false);
 
                 // Construir URL del PDF
                 const pdfUrlGenerated = `/sales/${saleId}/pdf?size=${size}&action=print`;
-                console.log('Mostrando PDF en iframe:', pdfUrlGenerated);
+                console.log('PDF URL generada:', pdfUrlGenerated);
 
-                // Mostrar modal con iframe
-                setPdfUrl(pdfUrlGenerated);
-                setShowPdfModal(true);
+                // Mostrar alerta de éxito y LUEGO mostrar el PDF cuando presione OK
+                showSuccess(
+                    '¡Venta Registrada Exitosamente!',
+                    `La venta ${response.data.sale.sale_number} ha sido registrada correctamente por un total de S/ ${response.data.sale.total}`
+                ).then(() => {
+                    // Cuando el usuario presiona OK, mostrar el modal del PDF
+                    setPdfUrl(pdfUrlGenerated);
+                    setShowPdfModal(true);
+                });
             } else {
                 console.error('Respuesta no exitosa:', response.data);
                 setLoading(false);
@@ -809,18 +871,93 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
+
+ {/* 2. Información del Comprobante */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <ShoppingCart className="h-5 w-5" />
+                                Información del Comprobante
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div>
+                                    <Label htmlFor="document_type">Tipo de Comprobante *</Label>
+                                    <Select
+                                        value={formData.document_type}
+                                        onValueChange={(value) => {
+                                            handleChange('document_type', value);
+                                            // Auto-seleccionar la primera serie disponible
+                                            const seriesForType = value === 'boleta'
+                                                ? documentSeries.boleta
+                                                : value === 'factura'
+                                                ? documentSeries.factura
+                                                : [];
+
+                                            if (seriesForType.length > 0) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    document_type: value,
+                                                    document_series_id: seriesForType[0].id.toString()
+                                                }));
+                                            } else {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    document_type: value,
+                                                    document_series_id: ''
+                                                }));
+                                            }
+                                        }}
+                                    >
+                                        <SelectTrigger id="document_type">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="boleta">Boleta</SelectItem>
+                                            <SelectItem value="factura">Factura</SelectItem>
+                                            <SelectItem value="nota_venta">Nota de Venta</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {formData.document_type !== 'nota_venta' && availableSeries.length > 0 && (
+                                    <div>
+                                        <Label htmlFor="document_series_id">Serie</Label>
+                                        <div className="h-10 px-3 py-2 rounded-md border bg-muted flex items-center font-semibold">
+                                            {availableSeries.find(s => s.id.toString() === formData.document_series_id)?.series || 'N/A'}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className={formData.document_type !== 'nota_venta' ? 'md:col-span-2' : 'md:col-span-3'}>
+                                    <Label>Número de Comprobante</Label>
+                                    <div className="h-10 px-3 py-2 rounded-md border bg-muted flex items-center font-mono text-lg font-semibold">
+                                        {documentNumberPreview}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Se generará automáticamente
+                                    </p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+
                     {/* 1. Información General: Sucursal, Cliente y Fecha */}
                     <Card>
                         <CardHeader>
-                            <CardTitle>Información de la Venta</CardTitle>
+                            <CardTitle className="text-lg md:text-xl">Información de la Venta</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
-                                {/* Cliente - 8 columnas */}
-                                <div className="lg:col-span-8">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {/* Cliente - Ocupa 2 columnas en desktop */}
+                                <div className="md:col-span-2">
                                     {!selectedCustomer ? (
                                         <div className="space-y-2">
-                                            <Label htmlFor="customer-search">Cliente *</Label>
+                                            <Label htmlFor="customer-search" className="text-sm font-medium">
+                                                Cliente {formData.document_type === 'factura' || (formData.document_type === 'boleta' && total >= 700) ? '*' : '(Opcional)'}
+                                            </Label>
                                             <div className="relative">
                                                 <div className="relative">
                                                     <Input
@@ -898,16 +1035,40 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                                     </div>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-muted-foreground">
-                                                Escribe mínimo 2 caracteres para buscar
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                {formData.document_type === 'factura' ? (
+                                                    <p className="text-xs text-amber-600 dark:text-amber-500 font-medium flex-1">
+                                                        ⚠ Cliente obligatorio para FACTURAS
+                                                    </p>
+                                                ) : formData.document_type === 'boleta' && total >= 700 ? (
+                                                    <p className="text-xs text-amber-600 dark:text-amber-500 font-medium flex-1">
+                                                        ⚠ Cliente obligatorio para BOLETAS ≥ S/ 700 (Norma SUNAT)
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs text-muted-foreground flex-1">
+                                                        Escribe mínimo 2 caracteres para buscar
+                                                    </p>
+                                                )}
+                                                {clienteVarios && formData.document_type !== 'factura' && (formData.document_type === 'nota_venta' || (formData.document_type === 'boleta' && total < 700)) && (
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleSelectCustomer(clienteVarios)}
+                                                        className="text-xs"
+                                                    >
+                                                        <User className="h-3 w-3 mr-1" />
+                                                        Cliente Varios
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
-                                            <Label htmlFor="customer-selected">Cliente *</Label>
+                                            <Label htmlFor="customer-selected" className="text-sm font-medium">Cliente</Label>
                                             <div className="flex items-center gap-2">
-                                                <div className="flex-1 border rounded-lg px-3 py-2 bg-muted/50">
-                                                    <p className="text-sm font-semibold">
+                                                <div className="flex-1 border rounded-lg px-3 py-2.5 bg-muted/50">
+                                                    <p className="text-sm font-semibold truncate">
                                                         {selectedCustomer.document_type}: {selectedCustomer.document_number} - {selectedCustomer.name}
                                                     </p>
                                                 </div>
@@ -924,91 +1085,22 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                     )}
                                 </div>
 
-                                {/* Fecha - 2 columnas */}
-                                <div className="lg:col-span-2">
-                                    <Label htmlFor="sale_date">Fecha *</Label>
+                                {/* Fecha - Ocupa 1 columna en desktop */}
+                                <div className="md:col-span-1">
+                                    <Label htmlFor="sale_date" className="text-sm font-medium">Fecha *</Label>
                                     <Input
                                         id="sale_date"
                                         type="date"
                                         value={formData.sale_date}
                                         onChange={(e) => handleChange('sale_date', e.target.value)}
+                                        className="h-10"
                                     />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
-                    {/* 2. Información del Comprobante */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <ShoppingCart className="h-5 w-5" />
-                                Información del Comprobante
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div>
-                                    <Label htmlFor="document_type">Tipo de Comprobante *</Label>
-                                    <Select
-                                        value={formData.document_type}
-                                        onValueChange={(value) => {
-                                            handleChange('document_type', value);
-                                            // Auto-seleccionar la primera serie disponible
-                                            const seriesForType = value === 'boleta'
-                                                ? documentSeries.boleta
-                                                : value === 'factura'
-                                                ? documentSeries.factura
-                                                : [];
-
-                                            if (seriesForType.length > 0) {
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    document_type: value,
-                                                    document_series_id: seriesForType[0].id.toString()
-                                                }));
-                                            } else {
-                                                setFormData(prev => ({
-                                                    ...prev,
-                                                    document_type: value,
-                                                    document_series_id: ''
-                                                }));
-                                            }
-                                        }}
-                                    >
-                                        <SelectTrigger id="document_type">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="boleta">Boleta</SelectItem>
-                                            <SelectItem value="factura">Factura</SelectItem>
-                                            <SelectItem value="nota_venta">Nota de Venta</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {formData.document_type !== 'nota_venta' && availableSeries.length > 0 && (
-                                    <div>
-                                        <Label htmlFor="document_series_id">Serie</Label>
-                                        <div className="h-10 px-3 py-2 rounded-md border bg-muted flex items-center font-semibold">
-                                            {availableSeries.find(s => s.id.toString() === formData.document_series_id)?.series || 'N/A'}
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className={formData.document_type !== 'nota_venta' ? 'md:col-span-2' : 'md:col-span-3'}>
-                                    <Label>Número de Comprobante</Label>
-                                    <div className="h-10 px-3 py-2 rounded-md border bg-muted flex items-center font-mono text-lg font-semibold">
-                                        {documentNumberPreview}
-                                    </div>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Se generará automáticamente
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
+                   
                     {/* Productos */}
                     <Card>
                         <CardHeader>
@@ -1020,8 +1112,8 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                         <CardContent className="space-y-4">
                             {/* Product Selector */}
                             <div className="relative">
-                                <Label htmlFor="product-search">Buscar Producto</Label>
-                                <div className="flex items-center gap-2 mt-1">
+                                <Label htmlFor="product-search" className="text-base font-semibold">Buscar Producto</Label>
+                                <div className="flex items-center gap-2 mt-2">
                                     <div className="relative flex-1">
                                         <Input
                                             ref={searchInputRef}
@@ -1031,17 +1123,26 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                             onChange={(e) => setSearchTerm(e.target.value)}
                                             onKeyDown={handleSearchKeyDown}
                                             autoComplete="off"
-                                            className="pr-10"
+                                            className="pr-10 h-12 text-base font-semibold border-2 focus:border-primary"
                                         />
-                                        <Package className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                        <Package className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                                     </div>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={() => setShowPriceCheckModal(true)}
+                                        className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:border-green-800 dark:text-green-400"
+                                    >
+                                        <DollarSign className="h-4 w-4 mr-2" />
+                                        Consultar Precios
+                                    </Button>
                                     <Button
                                         type="button"
                                         variant="outline"
                                         onClick={() => setShowProductModal(true)}
                                     >
                                         <List className="h-4 w-4 mr-2" />
-                                        Ver Catálogo
+                                        Catálogo
                                     </Button>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-1">
@@ -1052,41 +1153,50 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                 {showDropdown && filteredProducts.length > 0 && (
                                     <div
                                         ref={dropdownRef}
-                                        className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-[300px] overflow-auto"
+                                        className="absolute z-50 w-full mt-1 bg-popover border-2 border-primary/20 rounded-lg shadow-2xl max-h-[400px] overflow-auto"
                                     >
                                         {filteredProducts.map((product, index) => (
                                             <button
                                                 key={product.id}
                                                 type="button"
                                                 onClick={() => addProductById(product.id)}
-                                                className={`w-full text-left px-4 py-3 hover:bg-accent cursor-pointer transition-colors border-b last:border-b-0 ${
-                                                    index === highlightedIndex ? 'bg-accent' : ''
+                                                className={`w-full text-left px-4 py-3 hover:bg-primary/5 cursor-pointer transition-all border-b last:border-b-0 ${
+                                                    index === highlightedIndex ? 'bg-primary/10 border-l-4 border-l-primary' : ''
                                                 }`}
                                             >
-                                                <div className="flex items-start justify-between gap-3 w-full">
-                                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                <div className="flex items-center justify-between gap-4 w-full">
+                                                    <div className="flex items-center gap-3 flex-1 min-w-0">
                                                         <div className="flex-shrink-0">
-                                                            <span className="inline-block px-2 py-1 text-xs font-mono font-semibold bg-primary/10 text-primary rounded">
+                                                            <span className="inline-block px-3 py-1.5 text-sm font-mono font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-md">
                                                                 {product.code}
                                                             </span>
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="font-medium text-sm">{product.name}</p>
-                                                            <p className="text-xs text-muted-foreground mt-0.5">
-                                                                {product.category?.name || 'Sin categoría'} • {product.brand?.name || 'Sin marca'}
+                                                            <p className="font-semibold text-base truncate">{product.name}</p>
+                                                            <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
+                                                                <span>{product.category?.name || 'Sin categoría'}</span>
+                                                                <span>•</span>
+                                                                <span>{product.brand?.name || 'Sin marca'}</span>
                                                                 {product.total_stock !== undefined && (
-                                                                    <span className="ml-2 text-blue-600 font-semibold">
-                                                                        Stock: {product.total_stock}
-                                                                    </span>
+                                                                    <>
+                                                                        <span>•</span>
+                                                                        <span className={`font-bold ${
+                                                                            product.total_stock > 10 ? 'text-green-600' :
+                                                                            product.total_stock > 0 ? 'text-orange-600' :
+                                                                            'text-red-600'
+                                                                        }`}>
+                                                                            Stock: {product.total_stock}
+                                                                        </span>
+                                                                    </>
                                                                 )}
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex-shrink-0 text-right">
-                                                        <p className="font-bold text-base text-green-600">
+                                                    <div className="flex-shrink-0 text-right bg-green-50 dark:bg-green-900/20 px-4 py-2 rounded-lg">
+                                                        <p className="font-bold text-2xl text-green-700 dark:text-green-400">
                                                             S/ {Number(product.sale_price || 0).toFixed(2)}
                                                         </p>
-                                                        <p className="text-xs text-muted-foreground">Precio</p>
+                                                        <p className="text-xs text-green-600 dark:text-green-500 font-medium">Precio Venta</p>
                                                     </div>
                                                 </div>
                                             </button>
@@ -1493,21 +1603,53 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center gap-4">
-                        <Button type="submit" disabled={loading || details.length === 0 || !selectedCustomer}>
-                            <ShoppingCart className="mr-2 h-4 w-4" />
-                            {loading ? 'Procesando...' : 'Registrar Venta'}
-                        </Button>
-                        <Link href="/sales">
-                            <Button type="button" variant="outline">
-                                Cancelar
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+                        {/* Alertas a la izquierda en desktop, arriba en móvil */}
+                        <div className="flex-1">
+                            {details.length === 0 ? (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                                    <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                                        Agrega al menos un producto
+                                    </span>
+                                </div>
+                            ) : formData.document_type === 'factura' && !selectedCustomer ? (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                                    <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                                        Cliente obligatorio para FACTURAS
+                                    </span>
+                                </div>
+                            ) : formData.document_type === 'boleta' && total >= 700 && !selectedCustomer ? (
+                                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+                                    <span className="text-sm text-amber-700 dark:text-amber-400 font-medium">
+                                        Cliente obligatorio para BOLETAS ≥ S/ 700
+                                    </span>
+                                </div>
+                            ) : null}
+                        </div>
+
+                        {/* Botones a la derecha en desktop, abajo en móvil */}
+                        <div className="flex items-center gap-3">
+                            <Button
+                                type="submit"
+                                disabled={
+                                    loading ||
+                                    details.length === 0 ||
+                                    (formData.document_type === 'factura' && !selectedCustomer) ||
+                                    (formData.document_type === 'boleta' && total >= 700 && !selectedCustomer)
+                                }
+                            >
+                                <ShoppingCart className="mr-2 h-4 w-4" />
+                                {loading ? 'Procesando...' : 'Registrar Venta'}
                             </Button>
-                        </Link>
-                        {(details.length === 0 || !selectedCustomer) && (
-                            <span className="text-sm text-muted-foreground">
-                                {!selectedCustomer ? 'Selecciona un cliente' : 'Agrega al menos un producto'}
-                            </span>
-                        )}
+                            <Link href="/sales">
+                                <Button type="button" variant="outline">
+                                    Cancelar
+                                </Button>
+                            </Link>
+                        </div>
                     </div>
                 </form>
 
@@ -1518,6 +1660,144 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                     products={products}
                     onAddProduct={addProductById}
                 />
+
+                {/* Modal de Consulta de Precios */}
+                {showPriceCheckModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white dark:bg-gray-900 rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+                            {/* Header */}
+                            <div className="flex items-center justify-between p-6 border-b">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                                        <DollarSign className="h-6 w-6 text-green-600 dark:text-green-400" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold">Consulta de Precios</h2>
+                                        <p className="text-sm text-muted-foreground">Busca productos y consulta sus precios</p>
+                                    </div>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setShowPriceCheckModal(false);
+                                        setPriceCheckSearch('');
+                                    }}
+                                >
+                                    <XCircle className="h-5 w-5" />
+                                </Button>
+                            </div>
+
+                            {/* Search */}
+                            <div className="p-6 border-b">
+                                <div className="relative">
+                                    <Input
+                                        placeholder="Buscar por código, nombre, categoría o marca..."
+                                        value={priceCheckSearch}
+                                        onChange={(e) => setPriceCheckSearch(e.target.value)}
+                                        autoFocus
+                                        className="pr-10 h-12 text-base"
+                                    />
+                                    <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                                </div>
+                            </div>
+
+                            {/* Results */}
+                            <div className="flex-1 overflow-auto p-6">
+                                {priceCheckSearch && priceCheckProducts.length > 0 ? (
+                                    <div className="grid gap-3">
+                                        {priceCheckProducts.map((product) => (
+                                            <div
+                                                key={product.id}
+                                                className="border rounded-lg p-4 hover:bg-accent/50 transition-colors"
+                                            >
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div className="flex items-center gap-4 flex-1">
+                                                        <div className="flex-shrink-0">
+                                                            <span className="inline-block px-3 py-2 text-base font-mono font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg">
+                                                                {product.code}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="font-bold text-lg truncate">{product.name}</h3>
+                                                            <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                                                                <span>{product.category?.name || 'Sin categoría'}</span>
+                                                                <span>•</span>
+                                                                <span>{product.brand?.name || 'Sin marca'}</span>
+                                                                {product.total_stock !== undefined && (
+                                                                    <>
+                                                                        <span>•</span>
+                                                                        <span className={`font-bold ${
+                                                                            product.total_stock > 10 ? 'text-green-600' :
+                                                                            product.total_stock > 0 ? 'text-orange-600' :
+                                                                            'text-red-600'
+                                                                        }`}>
+                                                                            Stock: {product.total_stock}
+                                                                        </span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="text-right bg-green-50 dark:bg-green-900/20 px-6 py-3 rounded-lg">
+                                                            <p className="font-bold text-3xl text-green-700 dark:text-green-400">
+                                                                S/ {Number(product.sale_price || 0).toFixed(2)}
+                                                            </p>
+                                                            <p className="text-sm text-green-600 dark:text-green-500 font-medium">Precio Venta</p>
+                                                        </div>
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                addProductById(product.id);
+                                                                setShowPriceCheckModal(false);
+                                                                setPriceCheckSearch('');
+                                                            }}
+                                                        >
+                                                            <Plus className="h-4 w-4 mr-2" />
+                                                            Agregar
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : priceCheckSearch ? (
+                                    <div className="text-center py-12">
+                                        <Package className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                                        <p className="text-lg font-medium text-muted-foreground">No se encontraron productos</p>
+                                        <p className="text-sm text-muted-foreground mt-1">Intenta con otro término de búsqueda</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <Search className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                                        <p className="text-lg font-medium text-muted-foreground">Busca un producto para ver su precio</p>
+                                        <p className="text-sm text-muted-foreground mt-1">Escribe el código, nombre, categoría o marca</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="p-6 border-t bg-muted/20">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-sm text-muted-foreground">
+                                        {priceCheckProducts.length > 0 && `${priceCheckProducts.length} producto${priceCheckProducts.length !== 1 ? 's' : ''} encontrado${priceCheckProducts.length !== 1 ? 's' : ''}`}
+                                    </p>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            setShowPriceCheckModal(false);
+                                            setPriceCheckSearch('');
+                                        }}
+                                    >
+                                        Cerrar
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Modal para búsqueda en RENIEC/SUNAT */}
                 {showExternalSearchModal && (

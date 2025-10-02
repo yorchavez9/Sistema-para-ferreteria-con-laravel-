@@ -172,8 +172,9 @@ export default function RolesIndex({ roles, stats, filters }: RolesIndexProps) {
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Roles y Permisos" />
 
-            {/* Estadísticas */}
-            <div className="grid gap-4 md:grid-cols-2 mb-6">
+            <div className="p-6 space-y-6">
+                {/* Estadísticas */}
+                <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">Total Roles</CardTitle>
@@ -345,6 +346,7 @@ export default function RolesIndex({ roles, stats, filters }: RolesIndexProps) {
                     )}
                 </CardContent>
             </Card>
+            </div>
         </AppLayout>
     );
 }
