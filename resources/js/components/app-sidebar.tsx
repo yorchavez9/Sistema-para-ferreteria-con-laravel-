@@ -34,7 +34,10 @@ import {
     Percent,
     Wallet,
     TrendingUp,
-    BarChart3
+    BarChart3,
+    FileBarChart,
+    ShoppingBag,
+    PieChart
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -132,51 +135,81 @@ const mainNavItems: NavItem[] = [
         icon: Users,
     },
 
-    // 6. CAJA (Placeholder para futuro módulo)
-    // {
-    //     title: 'Caja',
-    //     icon: Wallet,
-    //     items: [
-    //         {
-    //             title: 'Abrir/Cerrar Caja',
-    //             href: '/cash/sessions',
-    //             icon: Wallet,
-    //         },
-    //         {
-    //             title: 'Movimientos',
-    //             href: '/cash/movements',
-    //             icon: TrendingUp,
-    //         },
-    //         {
-    //             title: 'Gastos',
-    //             href: '/expenses',
-    //             icon: Receipt,
-    //         },
-    //     ],
-    // },
+    // 6. CAJA
+    {
+        title: 'Caja',
+        icon: Wallet,
+        items: [
+            {
+                title: 'Gestión de Caja',
+                href: '/cash',
+                icon: Wallet,
+            },
+            {
+                title: 'Cajas Registradoras',
+                href: '/cash-registers',
+                icon: DollarSign,
+            },
+            {
+                title: 'Gastos',
+                href: '/expenses',
+                icon: Receipt,
+            },
+            {
+                title: 'Categorías de Gastos',
+                href: '/expense-categories',
+                icon: Tags,
+            },
+        ],
+    },
 
-    // 7. REPORTES (Placeholder para futuro)
-    // {
-    //     title: 'Reportes',
-    //     icon: BarChart3,
-    //     items: [
-    //         {
-    //             title: 'Reporte de Ventas',
-    //             href: '/reports/sales',
-    //             icon: TrendingUp,
-    //         },
-    //         {
-    //             title: 'Reporte de Inventario',
-    //             href: '/reports/inventory',
-    //             icon: Archive,
-    //         },
-    //         {
-    //             title: 'Reporte Financiero',
-    //             href: '/reports/financial',
-    //             icon: DollarSign,
-    //         },
-    //     ],
-    // },
+    // 7. REPORTES
+    {
+        title: 'Reportes',
+        icon: BarChart3,
+        items: [
+            {
+                title: 'Todos los Reportes',
+                href: '/reports',
+                icon: FileBarChart,
+            },
+            {
+                title: 'Ventas Detallado',
+                href: '/reports/sales/detailed',
+                icon: TrendingUp,
+            },
+            {
+                title: 'Caja Diaria',
+                href: '/reports/cash/daily',
+                icon: Wallet,
+            },
+            {
+                title: 'Inventario Valorizado',
+                href: '/reports/inventory/valued',
+                icon: Package,
+            },
+            {
+                title: 'Cuentas por Cobrar',
+                href: '/reports/receivables',
+                icon: DollarSign,
+            },
+            {
+                title: 'Compras',
+                href: '/reports/purchases',
+                icon: ShoppingBag,
+            },
+            {
+                title: 'Gastos',
+                href: '/reports/expenses',
+                icon: Receipt,
+            },
+            {
+                title: 'Rentabilidad',
+                href: '/reports/profitability/by-product',
+                icon: PieChart,
+            },
+        ],
+    },
 
     // 8. SUCURSALES
     {

@@ -59,6 +59,11 @@ class HandleInertiaRequests extends Middleware
                 'igv_percentage' => $settings->igv_percentage,
                 'price_decimals' => $settings->price_decimals,
             ],
+            'flash' => [
+                'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
+                'warning' => $request->session()->get('warning'),
+            ],
         ];
     }
 }

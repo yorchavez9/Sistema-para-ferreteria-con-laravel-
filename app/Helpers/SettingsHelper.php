@@ -91,3 +91,13 @@ if (!function_exists('is_sunat_enabled')) {
         return settings('sunat_api_enabled', false) && !empty(settings('sunat_api_token'));
     }
 }
+
+if (!function_exists('setting')) {
+    /**
+     * Alias para settings() - Singular form
+     */
+    function setting(?string $key = null, $default = null)
+    {
+        return settings($key, $default);
+    }
+}

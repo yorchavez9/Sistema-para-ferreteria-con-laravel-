@@ -96,6 +96,13 @@ class PurchaseOrderController extends Controller
 
     public function create()
     {
+        // Verificar si el usuario tiene una caja abierta
+        $currentSession = \App\Models\CashSession::getCurrentUserSession();
+        if (!$currentSession) {
+            return redirect()->route('cash.index')
+                ->with('warning', '¡Hola! 😊 Necesitas abrir una caja antes de realizar compras.');
+        }
+
         $suppliers = Supplier::active()->get();
         $branches = Branch::active()->get();
         $products = Product::active()->with(['category', 'brand'])->get();
@@ -113,6 +120,12 @@ class PurchaseOrderController extends Controller
 
     public function store(Request $request)
     {
+        // Verificar si el usuario tiene una caja abierta
+        $currentSession = \App\Models\CashSession::getCurrentUserSession();
+        if (!$currentSession) {
+            return back()->with('warning', '¡Hola! 😊 Necesitas abrir una caja antes de realizar compras.');
+        }
+
         $validated = $request->validate([
             'series' => 'required|string|max:20',
             'correlativo' => 'required|string|max:20',

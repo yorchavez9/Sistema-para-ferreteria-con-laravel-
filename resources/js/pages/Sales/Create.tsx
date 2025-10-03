@@ -555,12 +555,6 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
         setSelectedPrintSize(size);
         setLoading(true);
 
-        if (!selectedCustomer) {
-            setLoading(false);
-            setShowPrintSizeModal(false);
-            return;
-        }
-
         const submitData = {
             document_type: formData.document_type,
             document_series_id: formData.document_type !== 'nota_venta' ? formData.document_series_id || null : null,
@@ -628,6 +622,24 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
             console.error('Error response:', error.response);
             setLoading(false);
             setShowPrintSizeModal(false);
+
+            // Si es una advertencia de caja no abierta
+            if (error.response?.status === 403 && error.response?.data?.type === 'warning') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: '¡Atención!',
+                    text: error.response.data.message,
+                    confirmButtonText: 'Ir a Caja',
+                    confirmButtonColor: '#f59e0b',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cancelar',
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = '/cash';
+                    }
+                });
+                return;
+            }
 
             if (error.response?.data?.errors) {
                 const errors = error.response.data.errors;

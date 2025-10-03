@@ -107,6 +107,79 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('roles', RoleController::class)->middleware([
         'permission:role-list|role-create|role-edit|role-delete'
     ]);
+
+    // ========== MÓDULO DE CAJA ==========
+
+    // Sesiones de Caja - Rutas personalizadas
+    Route::prefix('cash')->name('cash.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\CashSessionController::class, 'index'])->name('index');
+        Route::get('/open', [\App\Http\Controllers\CashSessionController::class, 'create'])->name('create');
+        Route::post('/open', [\App\Http\Controllers\CashSessionController::class, 'store'])->name('store');
+        Route::get('/close', [\App\Http\Controllers\CashSessionController::class, 'closeForm'])->name('close.form');
+        Route::post('/close', [\App\Http\Controllers\CashSessionController::class, 'close'])->name('close');
+        Route::post('/{cashSession}/reopen', [\App\Http\Controllers\CashSessionController::class, 'reopen'])->name('reopen');
+        Route::get('/current', [\App\Http\Controllers\CashSessionController::class, 'current'])->name('current');
+        Route::get('/{cashSession}', [\App\Http\Controllers\CashSessionController::class, 'show'])->name('show');
+        Route::post('/income', [\App\Http\Controllers\CashSessionController::class, 'addIncome'])->name('income');
+        Route::post('/egress', [\App\Http\Controllers\CashSessionController::class, 'addEgress'])->name('egress');
+    });
+
+    // Cajas Registradoras
+    Route::resource('cash-registers', \App\Http\Controllers\CashRegisterController::class);
+
+    // Gastos - Rutas personalizadas
+    Route::post('expenses/{expense}/approve', [\App\Http\Controllers\ExpenseController::class, 'approve'])->name('expenses.approve');
+    Route::post('expenses/{expense}/reject', [\App\Http\Controllers\ExpenseController::class, 'reject'])->name('expenses.reject');
+
+    // Gastos - Resource routes
+    Route::resource('expenses', \App\Http\Controllers\ExpenseController::class);
+
+    // Categorías de Gastos
+    Route::resource('expense-categories', \App\Http\Controllers\ExpenseCategoryController::class);
+
+    // ========== MÓDULO DE REPORTES ==========
+
+    Route::prefix('reports')->name('reports.')->group(function () {
+        // Vista principal de reportes
+        Route::get('/', [\App\Http\Controllers\ReportController::class, 'index'])->name('index');
+
+        // PDF de prueba
+        Route::get('/test-pdf', [\App\Http\Controllers\ReportController::class, 'testPdf'])->name('test.pdf');
+
+        // Reportes de Ventas
+        Route::get('/sales/detailed', [\App\Http\Controllers\ReportController::class, 'salesDetailed'])->name('sales.detailed');
+        Route::get('/sales/detailed/pdf', [\App\Http\Controllers\ReportController::class, 'salesDetailedPdf'])->name('sales.detailed.pdf');
+        Route::get('/sales/by-client', [\App\Http\Controllers\ReportController::class, 'salesByClient'])->name('sales.by-client');
+        Route::get('/sales/by-client/pdf', [\App\Http\Controllers\ReportController::class, 'salesByClientPdf'])->name('sales.by-client.pdf');
+
+        // Reportes de Caja
+        Route::get('/cash/daily', [\App\Http\Controllers\ReportController::class, 'cashDaily'])->name('cash.daily');
+        Route::get('/cash/daily/pdf', [\App\Http\Controllers\ReportController::class, 'cashDailyPdf'])->name('cash.daily.pdf');
+        Route::get('/cash/closing/{cashSession}', [\App\Http\Controllers\ReportController::class, 'cashClosing'])->name('cash.closing');
+        Route::get('/cash/closing/{cashSession}/pdf', [\App\Http\Controllers\ReportController::class, 'cashClosingPdf'])->name('cash.closing.pdf');
+
+        // Reportes de Inventario
+        Route::get('/inventory/valued', [\App\Http\Controllers\ReportController::class, 'inventoryValued'])->name('inventory.valued');
+        Route::get('/inventory/valued/pdf', [\App\Http\Controllers\ReportController::class, 'inventoryValuedPdf'])->name('inventory.valued.pdf');
+        Route::get('/inventory/movements', [\App\Http\Controllers\ReportController::class, 'inventoryMovements'])->name('inventory.movements');
+        Route::get('/inventory/movements/pdf', [\App\Http\Controllers\ReportController::class, 'inventoryMovementsPdf'])->name('inventory.movements.pdf');
+
+        // Reportes de Cuentas por Cobrar
+        Route::get('/receivables', [\App\Http\Controllers\ReportController::class, 'receivables'])->name('receivables');
+        Route::get('/receivables/pdf', [\App\Http\Controllers\ReportController::class, 'receivablesPdf'])->name('receivables.pdf');
+
+        // Reportes de Compras
+        Route::get('/purchases', [\App\Http\Controllers\ReportController::class, 'purchases'])->name('purchases');
+        Route::get('/purchases/pdf', [\App\Http\Controllers\ReportController::class, 'purchasesPdf'])->name('purchases.pdf');
+
+        // Reportes de Gastos
+        Route::get('/expenses', [\App\Http\Controllers\ReportController::class, 'expenses'])->name('expenses');
+        Route::get('/expenses/pdf', [\App\Http\Controllers\ReportController::class, 'expensesPdf'])->name('expenses.pdf');
+
+        // Reportes de Rentabilidad
+        Route::get('/profitability/by-product', [\App\Http\Controllers\ReportController::class, 'profitabilityByProduct'])->name('profitability.by-product');
+        Route::get('/profitability/by-product/pdf', [\App\Http\Controllers\ReportController::class, 'profitabilityByProductPdf'])->name('profitability.by-product.pdf');
+    });
 });
 
 require __DIR__.'/settings.php';

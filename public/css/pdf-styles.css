@@ -1,0 +1,584 @@
+/* ============================================
+   ESTILOS PARA PDFs - Sistema Ferretería
+   ============================================ */
+
+/* Variables CSS */
+:root {
+    --primary: #2563eb;
+    --primary-dark: #1e40af;
+    --secondary: #64748b;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --light: #f8fafc;
+    --light-gray: #f1f5f9;
+    --medium-gray: #e2e8f0;
+    --dark: #1e293b;
+    --border: #cbd5e1;
+}
+
+/* Reset y Base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'DejaVu Sans', 'Arial', sans-serif;
+    font-size: 9pt;
+    color: var(--dark);
+    line-height: 1.4;
+}
+
+/* Tipografía */
+h1 {
+    font-size: 20pt;
+    font-weight: bold;
+    color: var(--primary-dark);
+    margin-bottom: 5px;
+}
+
+h2 {
+    font-size: 14pt;
+    font-weight: bold;
+    color: var(--dark);
+    margin: 15px 0 8px 0;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--primary);
+}
+
+h3 {
+    font-size: 11pt;
+    font-weight: bold;
+    color: var(--dark);
+    margin: 10px 0 5px 0;
+}
+
+.text-small {
+    font-size: 7pt;
+}
+
+.text-muted {
+    color: var(--secondary);
+}
+
+.text-bold {
+    font-weight: bold;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+/* Header Corporativo */
+.header-corporate {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-radius: 5px;
+}
+
+.header-corporate .logo {
+    width: 80px;
+    height: auto;
+    float: left;
+    margin-right: 15px;
+}
+
+.header-corporate .company-info {
+    overflow: hidden;
+}
+
+.header-corporate .company-name {
+    font-size: 16pt;
+    font-weight: bold;
+    margin-bottom: 3px;
+}
+
+.header-corporate .company-details {
+    font-size: 8pt;
+    line-height: 1.5;
+}
+
+/* Report Title Section */
+.report-title-section {
+    background-color: var(--light);
+    padding: 12px;
+    margin-bottom: 15px;
+    border-left: 4px solid var(--primary);
+    border-radius: 3px;
+}
+
+.report-title {
+    font-size: 16pt;
+    font-weight: bold;
+    color: var(--primary-dark);
+    margin-bottom: 5px;
+}
+
+.report-subtitle {
+    font-size: 9pt;
+    color: var(--secondary);
+}
+
+/* Filters Section */
+.filters-section {
+    background-color: #fef3c7;
+    border: 1px solid #fbbf24;
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 3px;
+}
+
+.filters-title {
+    font-size: 9pt;
+    font-weight: bold;
+    color: #92400e;
+    margin-bottom: 5px;
+}
+
+.filter-item {
+    display: inline-block;
+    margin-right: 15px;
+    margin-bottom: 3px;
+    font-size: 8pt;
+}
+
+.filter-label {
+    font-weight: bold;
+    color: #78350f;
+}
+
+.filter-value {
+    color: #451a03;
+}
+
+/* Tablas */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 8pt;
+}
+
+table.table-bordered {
+    border: 1px solid var(--border);
+}
+
+/* Cabecera de tabla */
+thead {
+    background-color: var(--primary);
+    color: white;
+}
+
+thead th {
+    padding: 8px 6px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 8pt;
+    border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+thead th:last-child {
+    border-right: none;
+}
+
+thead th.text-center {
+    text-align: center;
+}
+
+thead th.text-right {
+    text-align: right;
+}
+
+/* Cuerpo de tabla */
+tbody tr {
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+tbody tr:nth-child(even) {
+    background-color: var(--light);
+}
+
+tbody tr:hover {
+    background-color: #e0f2fe;
+}
+
+tbody td {
+    padding: 6px;
+    border-right: 1px solid var(--medium-gray);
+}
+
+tbody td:last-child {
+    border-right: none;
+}
+
+/* Pie de tabla (totales) */
+tfoot {
+    background-color: var(--light-gray);
+    font-weight: bold;
+    border-top: 2px solid var(--primary);
+}
+
+tfoot td {
+    padding: 8px 6px;
+    font-size: 9pt;
+}
+
+/* Tabla sin bordes internos */
+table.table-clean tbody td {
+    border: none;
+}
+
+/* Tabla compacta */
+table.table-compact {
+    font-size: 7pt;
+}
+
+table.table-compact thead th,
+table.table-compact tbody td,
+table.table-compact tfoot td {
+    padding: 4px;
+}
+
+/* Resumen Ejecutivo */
+.summary-box {
+    background-color: var(--light);
+    border: 2px solid var(--primary);
+    border-radius: 5px;
+    padding: 12px;
+    margin: 15px 0;
+}
+
+.summary-title {
+    font-size: 12pt;
+    font-weight: bold;
+    color: var(--primary-dark);
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.summary-grid {
+    display: table;
+    width: 100%;
+}
+
+.summary-row {
+    display: table-row;
+}
+
+.summary-label {
+    display: table-cell;
+    padding: 5px 10px;
+    font-weight: bold;
+    color: var(--dark);
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.summary-value {
+    display: table-cell;
+    padding: 5px 10px;
+    text-align: right;
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.summary-value.highlight {
+    font-size: 11pt;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+/* Alertas y Estados */
+.badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 7pt;
+    font-weight: bold;
+    text-align: center;
+}
+
+.badge-success {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.badge-warning {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.badge-danger {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-info {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-secondary {
+    background-color: var(--medium-gray);
+    color: var(--dark);
+}
+
+/* Estados de Stock */
+.stock-normal {
+    color: var(--success);
+    font-weight: bold;
+}
+
+.stock-low {
+    color: var(--warning);
+    font-weight: bold;
+}
+
+.stock-out {
+    color: var(--danger);
+    font-weight: bold;
+}
+
+/* Alertas */
+.alert {
+    padding: 10px;
+    border-radius: 3px;
+    margin: 10px 0;
+    font-size: 8pt;
+}
+
+.alert-warning {
+    background-color: #fef3c7;
+    border: 1px solid #fbbf24;
+    color: #78350f;
+}
+
+.alert-danger {
+    background-color: #fee2e2;
+    border: 1px solid #f87171;
+    color: #7f1d1d;
+}
+
+.alert-info {
+    background-color: #dbeafe;
+    border: 1px solid #60a5fa;
+    color: #1e3a8a;
+}
+
+/* Grid de 2 columnas */
+.grid-2 {
+    display: table;
+    width: 100%;
+}
+
+.grid-2 .col {
+    display: table-cell;
+    width: 50%;
+    padding: 5px;
+    vertical-align: top;
+}
+
+/* Info Box */
+.info-box {
+    background-color: white;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.info-box-header {
+    font-size: 9pt;
+    font-weight: bold;
+    color: var(--primary);
+    margin-bottom: 5px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid var(--medium-gray);
+}
+
+.info-box-content {
+    font-size: 8pt;
+}
+
+.info-row {
+    padding: 3px 0;
+}
+
+.info-label {
+    display: inline-block;
+    width: 40%;
+    font-weight: bold;
+    color: var(--secondary);
+}
+
+.info-value {
+    display: inline-block;
+    width: 59%;
+    color: var(--dark);
+}
+
+/* Totales destacados */
+.total-line {
+    border-top: 2px solid var(--primary);
+    padding-top: 8px;
+    margin-top: 5px;
+    font-weight: bold;
+    font-size: 10pt;
+}
+
+.grand-total {
+    background-color: var(--primary);
+    color: white;
+    padding: 10px;
+    font-size: 11pt;
+    font-weight: bold;
+    text-align: right;
+    border-radius: 3px;
+    margin-top: 10px;
+}
+
+/* Footer */
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 30px;
+    border-top: 1px solid var(--border);
+    padding: 5px 15px;
+    font-size: 7pt;
+    color: var(--secondary);
+    background-color: white;
+}
+
+.footer-left {
+    float: left;
+}
+
+.footer-center {
+    text-align: center;
+}
+
+.footer-right {
+    float: right;
+}
+
+/* Page break */
+.page-break {
+    page-break-after: always;
+}
+
+.page-break-before {
+    page-break-before: always;
+}
+
+.no-page-break {
+    page-break-inside: avoid;
+}
+
+/* Firma */
+.signature-section {
+    margin-top: 40px;
+    page-break-inside: avoid;
+}
+
+.signature-box {
+    display: inline-block;
+    width: 45%;
+    text-align: center;
+    margin: 20px 2%;
+    vertical-align: top;
+}
+
+.signature-line {
+    border-top: 1px solid var(--dark);
+    margin-top: 50px;
+    padding-top: 5px;
+}
+
+.signature-label {
+    font-size: 8pt;
+    font-weight: bold;
+    color: var(--secondary);
+}
+
+/* Tabla de conteo de billetes (para arqueo) */
+.money-count-table {
+    width: 100%;
+    margin: 15px 0;
+}
+
+.money-count-table th,
+.money-count-table td {
+    padding: 6px;
+    border: 1px solid var(--border);
+    text-align: center;
+}
+
+.money-count-table thead {
+    background-color: var(--light-gray);
+}
+
+.money-count-table .denomination {
+    text-align: left;
+    font-weight: bold;
+}
+
+.money-count-table .count-box {
+    background-color: white;
+    border: 1px solid var(--border);
+    width: 60px;
+    height: 20px;
+}
+
+/* Utilidades */
+.mt-10 { margin-top: 10px; }
+.mt-15 { margin-top: 15px; }
+.mt-20 { margin-top: 20px; }
+.mb-10 { margin-bottom: 10px; }
+.mb-15 { margin-bottom: 15px; }
+.mb-20 { margin-bottom: 20px; }
+.p-10 { padding: 10px; }
+.p-15 { padding: 15px; }
+
+/* Colores de texto */
+.text-primary { color: var(--primary); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+.text-secondary { color: var(--secondary); }
+
+/* Backgrounds */
+.bg-light { background-color: var(--light); }
+.bg-primary { background-color: var(--primary); color: white; }
+.bg-success { background-color: var(--success); color: white; }
+
+/* Bordes */
+.border { border: 1px solid var(--border); }
+.border-top { border-top: 1px solid var(--border); }
+.border-bottom { border-bottom: 1px solid var(--border); }
+.border-primary { border-color: var(--primary); }
+
+/* Moneda */
+.currency {
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+}
+
+/* Watermark (para reportes anulados) */
+.watermark {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    font-size: 72pt;
+    color: rgba(239, 68, 68, 0.1);
+    font-weight: bold;
+    z-index: -1;
+}

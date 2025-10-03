@@ -8,6 +8,8 @@ use App\Models\Branch;
 use App\Models\Product;
 use App\Models\Inventory;
 use App\Models\DocumentSeries;
+use App\Models\CashSession;
+use App\Models\CashMovement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -104,6 +106,13 @@ class SaleController extends Controller
 
     public function create()
     {
+        // Verificar si el usuario tiene una caja abierta
+        $currentSession = CashSession::getCurrentUserSession();
+        if (!$currentSession) {
+            return redirect()->route('cash.index')
+                ->with('warning', '¡Hola! 😊 Necesitas abrir una caja antes de realizar ventas.');
+        }
+
         $customers = Customer::active()->get();
         $branches = Branch::active()->get();
         $products = Product::active()->with(['category', 'brand'])->get();
@@ -141,6 +150,19 @@ class SaleController extends Controller
 
     public function store(Request $request)
     {
+        // Verificar si el usuario tiene una caja abierta
+        $currentSession = CashSession::getCurrentUserSession();
+        if (!$currentSession) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => '¡Hola! 😊 Necesitas abrir una caja antes de realizar ventas.',
+                    'type' => 'warning',
+                ], 403);
+            }
+            return back()->with('warning', '¡Hola! 😊 Necesitas abrir una caja antes de realizar ventas.');
+        }
+
         $settings = Setting::get();
 
         // Validación básica primero
@@ -308,6 +330,14 @@ class SaleController extends Controller
 
             // Procesar la venta (actualizar inventario)
             $sale->processSale();
+
+            // Registrar movimiento en caja si es venta al contado
+            if ($validated['payment_type'] === 'contado') {
+                $currentSession = CashSession::getCurrentUserSession();
+                if ($currentSession) {
+                    CashMovement::recordSale($sale, $currentSession);
+                }
+            }
 
             DB::commit();
 

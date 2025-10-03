@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\Sale;
+use App\Models\CashSession;
+use App\Models\CashMovement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -140,6 +142,14 @@ class PaymentController extends Controller
                 $validated['transaction_reference'] ?? null,
                 $validated['notes'] ?? null
             );
+
+            // Registrar movimiento en caja si es pago en efectivo
+            if ($validated['payment_method'] === 'efectivo') {
+                $currentSession = CashSession::getCurrentUserSession();
+                if ($currentSession) {
+                    CashMovement::recordPayment($payment, $currentSession);
+                }
+            }
 
             DB::commit();
 
