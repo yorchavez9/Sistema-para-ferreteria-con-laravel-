@@ -4,6 +4,8 @@ import AppLayout from '@/layouts/app-layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import {
     Select,
     SelectContent,
@@ -11,6 +13,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
     Table,
@@ -39,9 +49,12 @@ import {
     Printer,
     Plus,
     Minus,
+    CreditCard,
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { useDebouncedCallback } from 'use-debounce';
+import { showSuccess, showError } from '@/lib/sweet-alert';
+import axios from 'axios';
 
 interface Customer {
     id: number;
@@ -70,9 +83,11 @@ interface Payment {
     sale: Sale;
     payment_number: number;
     amount: number;
+    paid_amount: number;
+    remaining_amount: number;
     due_date: string;
     paid_date: string | null;
-    status: 'pendiente' | 'pagado' | 'vencido';
+    status: 'pendiente' | 'parcial' | 'pagado' | 'vencido';
     payment_method: string | null;
     transaction_reference: string | null;
     notes: string | null;
@@ -128,6 +143,18 @@ export default function PaymentsIndex({ payments, stats, branches, filters }: Pa
     const [sortField, setSortField] = useState(filters.sort_field || 'created_at');
     const [sortDirection, setSortDirection] = useState(filters.sort_direction || 'desc');
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+    // Estados para pago múltiple
+    const [selectedPayments, setSelectedPayments] = useState<Set<number>>(new Set());
+    const [showPayMultipleModal, setShowPayMultipleModal] = useState(false);
+    const [paymentAmounts, setPaymentAmounts] = useState<Record<number, string>>({});
+    const [receivedAmount, setReceivedAmount] = useState<string>('');
+    const [paymentFormData, setPaymentFormData] = useState({
+        payment_method: 'efectivo',
+        transaction_reference: '',
+        notes: '',
+    });
+    const [loading, setLoading] = useState(false);
 
     // Búsqueda en tiempo real con debounce
     const debouncedSearch = useDebouncedCallback((value: string) => {
@@ -284,6 +311,133 @@ export default function PaymentsIndex({ payments, stats, branches, filters }: Pa
         });
     };
 
+    const toggleRowExpansion = (paymentId: number) => {
+        const newExpandedRows = new Set(expandedRows);
+        if (newExpandedRows.has(paymentId)) {
+            newExpandedRows.delete(paymentId);
+        } else {
+            newExpandedRows.add(paymentId);
+        }
+        setExpandedRows(newExpandedRows);
+    };
+
+    // Funciones para pago múltiple
+    const handleSelectPayment = (paymentId: number) => {
+        const newSelected = new Set(selectedPayments);
+        if (newSelected.has(paymentId)) {
+            newSelected.delete(paymentId);
+        } else {
+            newSelected.add(paymentId);
+        }
+        setSelectedPayments(newSelected);
+    };
+
+    const handleSelectAll = () => {
+        const pendingPayments = payments.data.filter(p => p.status !== 'pagado');
+        if (selectedPayments.size === pendingPayments.length) {
+            setSelectedPayments(new Set());
+        } else {
+            setSelectedPayments(new Set(pendingPayments.map(p => p.id)));
+        }
+    };
+
+    const getSelectedPaymentsTotal = () => {
+        return payments.data
+            .filter(p => selectedPayments.has(p.id))
+            .reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+    };
+
+    const getTotalToPay = () => {
+        return Object.entries(paymentAmounts).reduce((sum, [id, amount]) => {
+            return sum + (parseFloat(amount) || 0);
+        }, 0);
+    };
+
+    const getChangeAmount = () => {
+        const received = parseFloat(receivedAmount) || 0;
+        const totalToPay = getTotalToPay();
+        return Math.max(0, received - totalToPay);
+    };
+
+    const openPayMultipleModal = () => {
+        // Inicializar paymentAmounts con los montos completos de cada pago seleccionado
+        const initialAmounts: Record<number, string> = {};
+        payments.data
+            .filter(p => selectedPayments.has(p.id))
+            .forEach(p => {
+                initialAmounts[p.id] = p.amount.toString();
+            });
+        setPaymentAmounts(initialAmounts);
+        setReceivedAmount('');
+        setShowPayMultipleModal(true);
+    };
+
+    const handlePayMultiple = async () => {
+        if (selectedPayments.size === 0) {
+            showError('Error', 'Debes seleccionar al menos un pago.');
+            return;
+        }
+
+        // Validar que todos los montos sean válidos
+        const invalidAmounts = Object.entries(paymentAmounts).filter(([id, amount]) => {
+            const num = parseFloat(amount);
+            return isNaN(num) || num <= 0;
+        });
+
+        if (invalidAmounts.length > 0) {
+            showError('Error', 'Todos los montos deben ser mayores a 0.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const numericPaymentAmounts: Record<number, number> = {};
+            Object.entries(paymentAmounts).forEach(([id, amount]) => {
+                numericPaymentAmounts[parseInt(id)] = parseFloat(amount);
+            });
+
+            const totalToPay = getTotalToPay();
+            const received = parseFloat(receivedAmount) || totalToPay;
+
+            const response = await axios.post('/payments/pay-multiple', {
+                payment_ids: Array.from(selectedPayments),
+                payment_amounts: numericPaymentAmounts,
+                received_amount: received,
+                ...paymentFormData,
+            });
+
+            if (response.data.success) {
+                const changeMsg = response.data.data.change_amount > 0
+                    ? `\nVuelto: S/ ${response.data.data.change_amount.toFixed(2)}`
+                    : '';
+
+                showSuccess(
+                    '¡Pagos registrados!',
+                    `Se procesaron ${response.data.data.processed_count} pagos por un total de S/ ${response.data.data.total_amount.toFixed(2)}${changeMsg}`
+                );
+                setShowPayMultipleModal(false);
+                setSelectedPayments(new Set());
+                setPaymentAmounts({});
+                setReceivedAmount('');
+                setPaymentFormData({
+                    payment_method: 'efectivo',
+                    transaction_reference: '',
+                    notes: '',
+                });
+                // Recargar la página
+                router.reload();
+            }
+        } catch (error: any) {
+            console.error('Error:', error);
+            showError(
+                'Error al procesar pagos',
+                error.response?.data?.message || 'Ocurrió un error al procesar los pagos'
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handlePay = (paymentId: number) => {
         router.get(`/payments/${paymentId}/pay`);
     };
@@ -291,16 +445,6 @@ export default function PaymentsIndex({ payments, stats, branches, filters }: Pa
     const handlePrintVoucher = (paymentId: number) => {
         // Abrir el voucher en una nueva ventana para imprimir
         window.open(`/payments/${paymentId}/voucher?size=80mm&preview=true`, '_blank');
-    };
-
-    const toggleRowExpansion = (paymentId: number) => {
-        const newExpanded = new Set(expandedRows);
-        if (newExpanded.has(paymentId)) {
-            newExpanded.delete(paymentId);
-        } else {
-            newExpanded.add(paymentId);
-        }
-        setExpandedRows(newExpanded);
     };
 
     const SortIcon = ({ field }: { field: string }) => {
@@ -475,6 +619,17 @@ export default function PaymentsIndex({ payments, stats, branches, filters }: Pa
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Lista de Pagos</CardTitle>
                         <div className="flex items-center gap-2">
+                            {/* Botón Pagar Seleccionados */}
+                            {selectedPayments.size > 0 && (
+                                <Button
+                                    onClick={openPayMultipleModal}
+                                    className="bg-green-600 hover:bg-green-700"
+                                >
+                                    <CreditCard className="h-4 w-4 mr-2" />
+                                    Pagar Seleccionados ({selectedPayments.size})
+                                </Button>
+                            )}
+
                             <Label className="text-xs text-muted-foreground">Mostrar:</Label>
                             <Select value={filterData.per_page} onValueChange={handlePerPageChange}>
                                 <SelectTrigger className="w-[80px] h-8">
@@ -496,6 +651,14 @@ export default function PaymentsIndex({ payments, stats, branches, filters }: Pa
                                 <TableRow>
                                     {/* Columna + (solo móvil) */}
                                     <TableHead className="md:hidden w-10"></TableHead>
+
+                                    {/* Checkbox para seleccionar todos */}
+                                    <TableHead className="w-12">
+                                        <Checkbox
+                                            checked={selectedPayments.size > 0 && selectedPayments.size === payments.data.filter(p => p.status !== 'pagado').length}
+                                            onCheckedChange={handleSelectAll}
+                                        />
+                                    </TableHead>
 
                                     <TableHead
                                         className="cursor-pointer hover:bg-muted/50"
@@ -575,6 +738,15 @@ export default function PaymentsIndex({ payments, stats, branches, filters }: Pa
                                                                 <Plus className="h-4 w-4" />
                                                             )}
                                                         </Button>
+                                                    </TableCell>
+
+                                                    {/* Checkbox selección */}
+                                                    <TableCell className="w-12">
+                                                        <Checkbox
+                                                            checked={selectedPayments.has(payment.id)}
+                                                            disabled={payment.status === 'pagado'}
+                                                            onCheckedChange={() => handleSelectPayment(payment.id)}
+                                                        />
                                                     </TableCell>
 
                                                     {/* Venta (visible siempre) */}
@@ -814,6 +986,154 @@ export default function PaymentsIndex({ payments, stats, branches, filters }: Pa
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Modal de Pago Múltiple */}
+            <Dialog open={showPayMultipleModal} onOpenChange={setShowPayMultipleModal}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Pagar Múltiples Cuotas</DialogTitle>
+                        <DialogDescription>
+                            Has seleccionado {selectedPayments.size} pago(s). Ingresa el monto a pagar para cada cuota.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        {/* Lista de pagos seleccionados con inputs para montos */}
+                        <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+                            <Label className="text-sm font-semibold">Cuotas Seleccionadas</Label>
+                            {payments.data
+                                .filter(p => selectedPayments.has(p.id))
+                                .map(payment => (
+                                    <div key={payment.id} className="flex items-center gap-3 p-2 bg-background rounded border">
+                                        <div className="flex-1">
+                                            <p className="text-sm font-medium">
+                                                Venta: {payment.sale.series}-{payment.sale.correlativo} - Cuota {payment.payment_number}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Cliente: {payment.sale.customer.name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Monto total: {formatCurrency(payment.amount)}
+                                            </p>
+                                        </div>
+                                        <div className="w-32">
+                                            <Label htmlFor={`amount-${payment.id}`} className="text-xs">Pagar</Label>
+                                            <Input
+                                                id={`amount-${payment.id}`}
+                                                type="number"
+                                                step="0.01"
+                                                min="0.01"
+                                                max={payment.amount}
+                                                value={paymentAmounts[payment.id] || ''}
+                                                onChange={(e) => setPaymentAmounts({
+                                                    ...paymentAmounts,
+                                                    [payment.id]: e.target.value
+                                                })}
+                                                className="text-right"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+
+                        {/* Total a pagar */}
+                        <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                            <span className="font-semibold">Total a Pagar:</span>
+                            <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                                {formatCurrency(getTotalToPay())}
+                            </span>
+                        </div>
+
+                        {/* Monto recibido (solo para efectivo) */}
+                        {paymentFormData.payment_method === 'efectivo' && (
+                            <div className="space-y-2">
+                                <Label htmlFor="received_amount">Monto Recibido (Efectivo)</Label>
+                                <Input
+                                    id="received_amount"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={receivedAmount}
+                                    onChange={(e) => setReceivedAmount(e.target.value)}
+                                    placeholder={`${getTotalToPay().toFixed(2)}`}
+                                    className="text-right text-lg font-semibold"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Deja vacío si el cliente paga el monto exacto
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Vuelto calculado */}
+                        {paymentFormData.payment_method === 'efectivo' && getChangeAmount() > 0 && (
+                            <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-950 rounded-lg border border-green-200 dark:border-green-800">
+                                <span className="font-semibold">Vuelto:</span>
+                                <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                                    {formatCurrency(getChangeAmount())}
+                                </span>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label htmlFor="payment_method">Método de Pago *</Label>
+                            <Select
+                                value={paymentFormData.payment_method}
+                                onValueChange={(value) => setPaymentFormData({ ...paymentFormData, payment_method: value })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="efectivo">Efectivo</SelectItem>
+                                    <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                                    <SelectItem value="transferencia">Transferencia</SelectItem>
+                                    <SelectItem value="yape">Yape</SelectItem>
+                                    <SelectItem value="plin">Plin</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="transaction_reference">Referencia de Transacción</Label>
+                            <Input
+                                id="transaction_reference"
+                                placeholder="Número de operación, voucher, etc."
+                                value={paymentFormData.transaction_reference}
+                                onChange={(e) => setPaymentFormData({ ...paymentFormData, transaction_reference: e.target.value })}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="notes">Notas</Label>
+                            <Textarea
+                                id="notes"
+                                placeholder="Observaciones adicionales..."
+                                value={paymentFormData.notes}
+                                onChange={(e) => setPaymentFormData({ ...paymentFormData, notes: e.target.value })}
+                                rows={3}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowPayMultipleModal(false)}
+                            disabled={loading}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            onClick={handlePayMultiple}
+                            disabled={loading || getTotalToPay() === 0}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            {loading ? 'Procesando...' : `Pagar ${formatCurrency(getTotalToPay())}`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

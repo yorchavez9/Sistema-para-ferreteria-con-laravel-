@@ -95,6 +95,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('payments/sales/{sale}', [\App\Http\Controllers\PaymentController::class, 'show'])->name('payments.show');
     Route::get('payments/{payment}/pay', [\App\Http\Controllers\PaymentController::class, 'showPayForm'])->name('payments.pay.form');
     Route::post('payments/{payment}/pay', [\App\Http\Controllers\PaymentController::class, 'pay'])->name('payments.pay');
+    Route::post('payments/pay-multiple', [\App\Http\Controllers\PaymentController::class, 'payMultiple'])->name('payments.pay-multiple');
     Route::get('payments/{payment}/voucher', [\App\Http\Controllers\PaymentController::class, 'voucher'])->name('payments.voucher');
     Route::post('payments/update-overdue', [\App\Http\Controllers\PaymentController::class, 'updateOverdueStatuses'])->name('payments.update-overdue');
 

@@ -123,9 +123,25 @@ class ProductController extends Controller
             'igv_percentage' => 'required|numeric|min:0|max:100',
             'description' => 'nullable|string',
             'technical_specifications' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
 
-        Product::create($request->all());
+        $data = $request->except('image');
+
+        // Convertir valores booleanos
+        if (isset($data['price_includes_igv'])) {
+            $data['price_includes_igv'] = filter_var($data['price_includes_igv'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Procesar imagen principal
+        if ($request->hasFile('image')) {
+            $image = $request->file('image');
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $imagePath = $image->storeAs('products', $imageName, 'public');
+            $data['image'] = $imagePath;
+        }
+
+        Product::create($data);
 
         return redirect()->route('products.index')
             ->with('success', 'Producto creado exitosamente.');
@@ -177,9 +193,30 @@ class ProductController extends Controller
             'igv_percentage' => 'required|numeric|min:0|max:100',
             'description' => 'nullable|string',
             'technical_specifications' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
         ]);
 
-        $product->update($request->all());
+        $data = $request->except('image');
+
+        // Convertir valores booleanos
+        if (isset($data['price_includes_igv'])) {
+            $data['price_includes_igv'] = filter_var($data['price_includes_igv'], FILTER_VALIDATE_BOOLEAN);
+        }
+
+        // Procesar nueva imagen si se cargó una
+        if ($request->hasFile('image')) {
+            // Eliminar imagen anterior si existe
+            if ($product->image && \Storage::disk('public')->exists($product->image)) {
+                \Storage::disk('public')->delete($product->image);
+            }
+
+            $image = $request->file('image');
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $imagePath = $image->storeAs('products', $imageName, 'public');
+            $data['image'] = $imagePath;
+        }
+
+        $product->update($data);
 
         return redirect()->route('products.index')
             ->with('success', 'Producto actualizado exitosamente.');

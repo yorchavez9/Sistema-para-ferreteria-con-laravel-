@@ -48,6 +48,7 @@ interface Product {
     code: string;
     barcode: string | null;
     name: string;
+    image: string | null;
     category: {
         id: number;
         name: string;
@@ -526,27 +527,43 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
 
                                                     {/* Producto */}
                                                     <TableCell>
-                                                        <div>
-                                                            <p className="text-sm font-medium">{product.name}</p>
-                                                            {/* Info móvil condensada */}
-                                                            <div className="md:hidden mt-1 space-y-1">
-                                                                <p className="text-xs text-muted-foreground">
-                                                                    {product.category.name} - {product.brand.name}
-                                                                </p>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="font-semibold text-sm text-green-600">
-                                                                        {formatCurrency(product.sale_price)}
-                                                                    </span>
-                                                                    <Badge
-                                                                        variant="outline"
-                                                                        className={`text-xs ${
-                                                                            product.is_active
-                                                                                ? 'bg-green-100 text-green-800 border-green-300'
-                                                                                : 'bg-red-100 text-red-800 border-red-300'
-                                                                        }`}
-                                                                    >
-                                                                        {product.is_active ? 'Activo' : 'Inactivo'}
-                                                                    </Badge>
+                                                        <div className="flex items-center gap-3">
+                                                            {/* Imagen del producto */}
+                                                            <div className="flex-shrink-0">
+                                                                {product.image ? (
+                                                                    <img
+                                                                        src={`/storage/${product.image}`}
+                                                                        alt={product.name}
+                                                                        className="h-12 w-12 rounded-md object-cover border border-gray-200"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="h-12 w-12 rounded-md bg-gray-100 flex items-center justify-center border border-gray-200">
+                                                                        <Package className="h-6 w-6 text-gray-400" />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-medium">{product.name}</p>
+                                                                {/* Info móvil condensada */}
+                                                                <div className="md:hidden mt-1 space-y-1">
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        {product.category.name} - {product.brand.name}
+                                                                    </p>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-semibold text-sm text-green-600">
+                                                                            {formatCurrency(product.sale_price)}
+                                                                        </span>
+                                                                        <Badge
+                                                                            variant="outline"
+                                                                            className={`text-xs ${
+                                                                                product.is_active
+                                                                                    ? 'bg-green-100 text-green-800 border-green-300'
+                                                                                    : 'bg-red-100 text-red-800 border-red-300'
+                                                                            }`}
+                                                                        >
+                                                                            {product.is_active ? 'Activo' : 'Inactivo'}
+                                                                        </Badge>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>

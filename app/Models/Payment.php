@@ -14,6 +14,10 @@ class Payment extends Model
         'sale_id',
         'payment_number',
         'amount',
+        'paid_amount',
+        'remaining_amount',
+        'received_amount',
+        'change_amount',
         'due_date',
         'paid_date',
         'status',
@@ -26,6 +30,10 @@ class Payment extends Model
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'remaining_amount' => 'decimal:2',
+        'received_amount' => 'decimal:2',
+        'change_amount' => 'decimal:2',
         'due_date' => 'date',
         'paid_date' => 'date',
     ];
@@ -55,13 +63,34 @@ class Payment extends Model
     }
 
     /**
-     * Marcar como pagado
+     * Marcar como pagado (total o parcial)
      */
-    public function markAsPaid(string $paymentMethod, ?string $transactionReference = null, ?string $notes = null): void
-    {
+    public function markAsPaid(
+        string $paymentMethod,
+        float $paidAmount,
+        ?float $receivedAmount = null,
+        ?string $transactionReference = null,
+        ?string $notes = null
+    ): void {
+        $paidAmount = (float) $paidAmount;
+        $receivedAmount = $receivedAmount ? (float) $receivedAmount : $paidAmount;
+
+        // Calcular vuelto
+        $changeAmount = max(0, $receivedAmount - $paidAmount);
+
+        // Determinar nuevo estado
+        $newPaidAmount = $this->paid_amount + $paidAmount;
+        $remainingAmount = $this->amount - $newPaidAmount;
+
+        $status = $remainingAmount <= 0.01 ? 'pagado' : 'parcial';
+
         $this->update([
-            'status' => 'pagado',
-            'paid_date' => now(),
+            'paid_amount' => $newPaidAmount,
+            'remaining_amount' => max(0, $remainingAmount),
+            'received_amount' => $receivedAmount,
+            'change_amount' => $changeAmount,
+            'status' => $status,
+            'paid_date' => $status === 'pagado' ? now() : $this->paid_date,
             'payment_method' => $paymentMethod,
             'transaction_reference' => $transactionReference,
             'notes' => $notes,

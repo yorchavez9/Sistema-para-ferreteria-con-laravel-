@@ -28,6 +28,7 @@ interface Product {
     stock?: number;
     total_stock?: number;
     unit?: string;
+    image?: string | null;
     category?: {
         name: string;
     };
@@ -140,6 +141,7 @@ export default function ProductSelectorModal({
                     <Table>
                         <TableHeader className="sticky top-0 bg-background z-10">
                             <TableRow>
+                                <TableHead className="w-16"></TableHead>
                                 <TableHead>Código</TableHead>
                                 <TableHead>Producto</TableHead>
                                 <TableHead>Categoría</TableHead>
@@ -152,7 +154,7 @@ export default function ProductSelectorModal({
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-8">
+                                    <TableCell colSpan={8} className="text-center py-8">
                                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                             <Loader2 className="h-10 w-10 opacity-50 animate-spin" />
                                             <p>Cargando productos...</p>
@@ -164,6 +166,19 @@ export default function ProductSelectorModal({
                                     const stock = product.stock || product.total_stock || 0;
                                     return (
                                         <TableRow key={product.id} className="hover:bg-muted/50">
+                                            <TableCell className="w-16">
+                                                {product.image ? (
+                                                    <img
+                                                        src={`/storage/${product.image}`}
+                                                        alt={product.name}
+                                                        className="h-12 w-12 rounded-md object-cover border border-gray-200"
+                                                    />
+                                                ) : (
+                                                    <div className="h-12 w-12 rounded-md bg-gray-100 flex items-center justify-center border border-gray-200">
+                                                        <Package className="h-6 w-6 text-gray-400" />
+                                                    </div>
+                                                )}
+                                            </TableCell>
                                             <TableCell>
                                                 <span className="font-mono font-semibold text-primary">
                                                     {product.code}
@@ -203,7 +218,7 @@ export default function ProductSelectorModal({
                                 })
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-8">
+                                    <TableCell colSpan={8} className="text-center py-8">
                                         <div className="flex flex-col items-center gap-2 text-muted-foreground">
                                             <Package className="h-10 w-10 opacity-50" />
                                             <p>No se encontraron productos</p>

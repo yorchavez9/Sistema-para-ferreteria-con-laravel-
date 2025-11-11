@@ -49,6 +49,7 @@ interface Product {
     purchase_price?: number;
     igv_percentage: number;
     price_includes_igv: boolean;
+    image?: string | null;
     category?: {
         name: string;
     };
@@ -641,13 +642,32 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                 return;
             }
 
-            if (error.response?.data?.errors) {
+            // Manejar errores de validación específicos
+            if (error.response?.status === 422) {
+                const errorData = error.response.data;
+
+                if (errorData?.errors) {
+                    const errors = errorData.errors;
+                    setErrors(errors);
+
+                    const errorMessages = Object.entries(errors).map(([field, messages]) => {
+                        const messageArray = Array.isArray(messages) ? messages : [messages];
+                        return messageArray.join(', ');
+                    }).join('\n');
+
+                    showError('Error de validación', errorMessages || errorData.message);
+                } else if (errorData?.message) {
+                    showError('Error al crear venta', errorData.message);
+                } else {
+                    showError('Error al crear venta', 'Por favor, revisa los campos y vuelve a intentar.');
+                }
+            } else if (error.response?.data?.errors) {
                 const errors = error.response.data.errors;
                 setErrors(errors);
 
                 const errorMessages = Object.entries(errors).map(([field, messages]) => {
                     const messageArray = Array.isArray(messages) ? messages : [messages];
-                    return `${field}: ${messageArray.join(', ')}`;
+                    return messageArray.join(', ');
                 }).join('\n');
 
                 showError('Error al crear venta', errorMessages);

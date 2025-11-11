@@ -273,4 +273,115 @@ class PaymentController extends Controller
             'updated' => $updated,
         ]);
     }
+
+    /**
+     * Pagar múltiples cuotas en una sola operación
+     */
+    public function payMultiple(Request $request)
+    {
+        $validated = $request->validate([
+            'payment_ids' => 'required|array|min:1',
+            'payment_ids.*' => 'required|exists:sale_payments,id',
+            'payment_amounts' => 'required|array',
+            'payment_amounts.*' => 'required|numeric|min:0.01',
+            'received_amount' => 'nullable|numeric|min:0',
+            'payment_method' => 'required|in:efectivo,tarjeta,transferencia,yape,plin',
+            'transaction_reference' => 'nullable|string|max:255',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $payments = Payment::whereIn('id', $validated['payment_ids'])
+                ->where('status', '!=', 'pagado')
+                ->get();
+
+            if ($payments->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No hay pagos pendientes para procesar.'
+                ], 422);
+            }
+
+            $totalAmount = 0;
+            $processedPayments = [];
+            $currentSession = null;
+
+            // Si es efectivo, obtener sesión de caja actual
+            if ($validated['payment_method'] === 'efectivo') {
+                $currentSession = CashSession::getCurrentUserSession();
+                if (!$currentSession) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No tienes una sesión de caja abierta. Debes abrir caja antes de registrar pagos en efectivo.',
+                        'type' => 'warning'
+                    ], 403);
+                }
+            }
+
+            $totalToPay = 0;
+            $totalChangeAmount = 0;
+
+            // Calcular total a pagar
+            foreach ($validated['payment_ids'] as $index => $paymentId) {
+                $totalToPay += $validated['payment_amounts'][$paymentId];
+            }
+
+            // Calcular vuelto total
+            $receivedAmount = $validated['received_amount'] ?? $totalToPay;
+            $totalChangeAmount = max(0, $receivedAmount - $totalToPay);
+
+            // Procesar cada pago
+            foreach ($payments as $payment) {
+                $paidAmount = $validated['payment_amounts'][$payment->id];
+
+                // Marcar como pagado (total o parcial)
+                $payment->markAsPaid(
+                    $validated['payment_method'],
+                    $paidAmount,
+                    $paidAmount, // Para cada pago individual, el recibido es igual al pagado
+                    $validated['transaction_reference'] ?? null,
+                    $validated['notes'] ?? null
+                );
+
+                $totalAmount += $paidAmount;
+
+                // Registrar movimiento en caja si es efectivo
+                if ($validated['payment_method'] === 'efectivo' && $currentSession) {
+                    CashMovement::recordPayment($payment, $currentSession);
+                }
+
+                $processedPayments[] = [
+                    'id' => $payment->id,
+                    'payment_number' => $payment->payment_number,
+                    'amount' => $payment->amount,
+                    'paid_amount' => $paidAmount,
+                    'remaining' => $payment->remaining_amount,
+                    'status' => $payment->status,
+                    'sale_number' => $payment->sale->sale_number,
+                ];
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pagos registrados exitosamente.',
+                'data' => [
+                    'processed_count' => count($processedPayments),
+                    'total_amount' => $totalAmount,
+                    'received_amount' => $receivedAmount,
+                    'change_amount' => $totalChangeAmount,
+                    'payments' => $processedPayments,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar los pagos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

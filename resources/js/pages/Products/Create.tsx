@@ -14,7 +14,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, X } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { showSuccess, showError } from '@/lib/sweet-alert';
 
@@ -61,15 +61,58 @@ export default function ProductsCreate({ categories, brands }: ProductsCreatePro
         dimensions: '',
     });
 
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
+
+    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Validar tipo de archivo
+            if (!file.type.startsWith('image/')) {
+                showError('Archivo inválido', 'Por favor selecciona una imagen válida.');
+                return;
+            }
+
+            // Validar tamaño (máx 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                showError('Archivo muy grande', 'La imagen no debe superar los 2MB.');
+                return;
+            }
+
+            setImageFile(file);
+
+            // Crear preview
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleRemoveImage = () => {
+        setImageFile(null);
+        setImagePreview(null);
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setErrors({});
 
-        router.post('/products', formData, {
+        // Crear FormData para enviar archivo
+        const data = new FormData();
+        Object.keys(formData).forEach((key) => {
+            data.append(key, (formData as any)[key]);
+        });
+
+        if (imageFile) {
+            data.append('image', imageFile);
+        }
+
+        router.post('/products', data, {
             onSuccess: () => {
                 showSuccess('¡Producto creado!', 'El producto ha sido creado exitosamente.');
             },
@@ -189,6 +232,56 @@ export default function ProductsCreate({ categories, brands }: ProductsCreatePro
                                     />
                                     {errors.technical_specifications && (
                                         <p className="text-sm text-red-500 mt-1">{errors.technical_specifications}</p>
+                                    )}
+                                </div>
+
+                                {/* Campo de Imagen */}
+                                <div>
+                                    <Label htmlFor="image">Imagen del Producto</Label>
+                                    <div className="mt-2">
+                                        {imagePreview ? (
+                                            <div className="relative inline-block">
+                                                <img
+                                                    src={imagePreview}
+                                                    alt="Preview"
+                                                    className="h-40 w-40 object-cover rounded-lg border-2 border-gray-200"
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    className="absolute -top-2 -right-2 h-8 w-8 p-0 rounded-full"
+                                                    onClick={handleRemoveImage}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <label
+                                                htmlFor="image"
+                                                className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                            >
+                                                <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                    <ImageIcon className="h-10 w-10 text-gray-400 mb-2" />
+                                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                                        <span className="font-semibold">Click para subir</span> o arrastra una imagen
+                                                    </p>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                        PNG, JPG, WEBP (máx. 2MB)
+                                                    </p>
+                                                </div>
+                                                <Input
+                                                    id="image"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={handleImageChange}
+                                                />
+                                            </label>
+                                        )}
+                                    </div>
+                                    {errors.image && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.image}</p>
                                     )}
                                 </div>
                             </CardContent>

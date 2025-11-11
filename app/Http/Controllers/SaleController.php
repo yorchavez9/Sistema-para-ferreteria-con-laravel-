@@ -220,9 +220,13 @@ class SaleController extends Controller
             foreach ($validated['details'] as $detail) {
                 $product = Product::find($detail['product_id']);
                 if ($detail['unit_price'] < $product->purchase_price) {
-                    return back()->withErrors([
-                        'details' => "No se permite vender el producto '{$product->name}' por debajo del costo de compra (S/ {$product->purchase_price})."
-                    ]);
+                    return response()->json([
+                        'success' => false,
+                        'message' => "No se permite vender el producto '{$product->name}' por debajo del costo de compra (S/ " . number_format($product->purchase_price, 2) . ").",
+                        'errors' => [
+                            'details' => "No se permite vender el producto '{$product->name}' por debajo del costo de compra (S/ " . number_format($product->purchase_price, 2) . ")."
+                        ]
+                    ], 422);
                 }
             }
         }
