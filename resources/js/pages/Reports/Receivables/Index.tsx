@@ -2,11 +2,40 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router, Link } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState, FormEvent } from 'react';
-import { FileDown, Search, RefreshCw, AlertCircle, Eye } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
+import {
+    FileDown,
+    Search,
+    RefreshCw,
+    AlertCircle,
+    Eye,
+    Filter,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
+    ChevronLeft,
+    ChevronRight,
+} from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -53,7 +82,15 @@ interface SaleWithPayments {
 }
 
 interface Props {
-    sales: SaleWithPayments[];
+    sales: {
+        data: SaleWithPayments[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+        from: number;
+        to: number;
+    };
     totals: {
         total_sales: number;
         total_amount: number;
@@ -63,56 +100,166 @@ interface Props {
     };
     customers: Array<{ id: number; name: string }>;
     branches: Array<{ id: number; name: string }>;
-    filters: Record<string, string>;
-    dateFrom?: string;
-    dateTo?: string;
+    filters: {
+        search?: string;
+        date_from?: string;
+        date_to?: string;
+        customer_id?: string;
+        branch_id?: string;
+        sort_field?: string;
+        sort_direction?: string;
+        per_page?: string;
+    };
 }
 
 export default function ReceivablesReport({
-    sales = [],
-    totals,
+    sales = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0, from: 0, to: 0 },
+    totals = { total_sales: 0, total_amount: 0, total_paid: 0, total_pending: 0, total_overdue: 0 },
     customers = [],
     branches = [],
     filters: initialFilters = {},
-    dateFrom,
-    dateTo,
 }: Props) {
-    const [filters, setFilters] = useState({
-        date_from: dateFrom || '',
-        date_to: dateTo || '',
-        customer_id: '',
-        branch_id: '',
+    const [searchTerm, setSearchTerm] = useState(initialFilters.search || '');
+    const [showFilters, setShowFilters] = useState(false);
+    const [sortField, setSortField] = useState(initialFilters.sort_field || 'sale_date');
+    const [sortDirection, setSortDirection] = useState(initialFilters.sort_direction || 'desc');
+    const [filterData, setFilterData] = useState({
+        date_from: initialFilters.date_from || '',
+        date_to: initialFilters.date_to || '',
+        customer_id: initialFilters.customer_id || '',
+        branch_id: initialFilters.branch_id || '',
+        per_page: initialFilters.per_page || '15',
     });
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [expandedSales, setExpandedSales] = useState<Set<number>>(new Set());
 
-    const handleFilterChange = (name: string, value: string) => {
-        setFilters((prev) => ({ ...prev, [name]: value }));
+    // Búsqueda en tiempo real con debounce
+    const debouncedSearch = useDebouncedCallback((value: string) => {
+        const params: any = {
+            search: value,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+            per_page: filterData.per_page,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/receivables', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    }, 500);
+
+    const handleSearchChange = (value: string) => {
+        setSearchTerm(value);
+        debouncedSearch(value);
     };
 
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        router.get('/reports/receivables', filters, {
+    const handleFilter = () => {
+        const params: any = {
+            search: searchTerm,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+            per_page: filterData.per_page,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/receivables', params, {
             preserveState: true,
             preserveScroll: true,
         });
     };
 
-    const handleClearFilters = () => {
-        setFilters({
+    const clearFilters = () => {
+        const clearedFilters = {
             date_from: '',
             date_to: '',
             customer_id: '',
             branch_id: '',
+            per_page: '15',
+        };
+        setFilterData(clearedFilters);
+        setSearchTerm('');
+
+        router.get('/reports/receivables', {
+            per_page: '15',
+            sort_field: sortField,
+            sort_direction: sortDirection,
         });
-        router.get('/reports/receivables');
+    };
+
+    const handleSort = (field: string) => {
+        const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+        setSortField(field);
+        setSortDirection(newDirection);
+
+        const params: any = {
+            search: searchTerm,
+            sort_field: field,
+            sort_direction: newDirection,
+            per_page: filterData.per_page,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/receivables', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handlePerPageChange = (value: string) => {
+        setFilterData({ ...filterData, per_page: value });
+
+        const params: any = {
+            search: searchTerm,
+            per_page: value,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/receivables', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handlePageChange = (page: number) => {
+        const params: any = {
+            page: page,
+            search: searchTerm,
+            per_page: filterData.per_page,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/receivables', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleGeneratePdf = () => {
         setIsGenerating(true);
+        const params: any = { search: searchTerm, ...filterData };
         const queryString = new URLSearchParams(
-            Object.entries(filters).filter(([_, value]) => value !== '')
+            Object.entries(params).filter(([_, value]) => value !== '')
         ).toString();
         window.open(`/reports/receivables/pdf?${queryString}`, '_blank');
         setTimeout(() => setIsGenerating(false), 1000);
@@ -153,11 +300,18 @@ export default function ReceivablesReport({
         return 'bg-gray-200 text-gray-700';
     };
 
+    const SortIcon = ({ field }: { field: string }) => {
+        if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-3 w-3 ml-1" />
+            : <ArrowDown className="h-3 w-3 ml-1" />;
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Cuentas por Cobrar" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="space-y-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
@@ -176,112 +330,159 @@ export default function ReceivablesReport({
                     </Button>
                 </div>
 
-                {/* Filtros */}
-                <Card className="p-6">
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
-                            {/* Fecha Desde */}
-                            <div className="space-y-2">
-                                <Label htmlFor="date_from">Fecha Desde</Label>
+                {/* Barra de Búsqueda */}
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    id="date_from"
-                                    type="date"
-                                    value={filters.date_from}
-                                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                    type="text"
+                                    placeholder="Buscar por número de venta, cliente, documento..."
+                                    value={searchTerm}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
+                                    className="pl-10"
                                 />
                             </div>
-
-                            {/* Fecha Hasta */}
-                            <div className="space-y-2">
-                                <Label htmlFor="date_to">Fecha Hasta</Label>
-                                <Input
-                                    id="date_to"
-                                    type="date"
-                                    value={filters.date_to}
-                                    onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                                />
-                            </div>
-
-                            {/* Cliente */}
-                            <div className="space-y-2">
-                                <Label htmlFor="customer_id">Cliente</Label>
-                                <select
-                                    id="customer_id"
-                                    value={filters.customer_id}
-                                    onChange={(e) => handleFilterChange('customer_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todos</option>
-                                    {customers.map((customer) => (
-                                        <option key={customer.id} value={customer.id}>
-                                            {customer.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Sucursal */}
-                            <div className="space-y-2">
-                                <Label htmlFor="branch_id">Sucursal</Label>
-                                <select
-                                    id="branch_id"
-                                    value={filters.branch_id}
-                                    onChange={(e) => handleFilterChange('branch_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todas</option>
-                                    {branches.map((branch) => (
-                                        <option key={branch.id} value={branch.id}>
-                                            {branch.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                            <Button type="submit">
-                                <Search className="mr-2 h-4 w-4" />
-                                Buscar
-                            </Button>
-                            <Button type="button" variant="outline" onClick={handleClearFilters}>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Limpiar Filtros
+                            <Button onClick={() => setShowFilters(!showFilters)} variant="outline">
+                                <Filter className="h-4 w-4 mr-2" />
+                                {showFilters ? 'Ocultar Filtros' : 'Filtros Avanzados'}
                             </Button>
                         </div>
-                    </form>
+                    </CardContent>
                 </Card>
+
+                {/* Filtros Avanzados */}
+                {showFilters && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Filtros Avanzados</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_from">Fecha Desde</Label>
+                                    <Input
+                                        id="date_from"
+                                        type="date"
+                                        value={filterData.date_from}
+                                        onChange={(e) =>
+                                            setFilterData({ ...filterData, date_from: e.target.value })
+                                        }
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_to">Fecha Hasta</Label>
+                                    <Input
+                                        id="date_to"
+                                        type="date"
+                                        value={filterData.date_to}
+                                        onChange={(e) =>
+                                            setFilterData({ ...filterData, date_to: e.target.value })
+                                        }
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="customer_id">Cliente</Label>
+                                    <Select
+                                        value={filterData.customer_id}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, customer_id: value })
+                                        }
+                                    >
+                                        <SelectTrigger id="customer_id">
+                                            <SelectValue placeholder="Todos" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="">Todos</SelectItem>
+                                            {customers.map((customer) => (
+                                                <SelectItem key={customer.id} value={customer.id.toString()}>
+                                                    {customer.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="branch_id">Sucursal</Label>
+                                    <Select
+                                        value={filterData.branch_id}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, branch_id: value })
+                                        }
+                                    >
+                                        <SelectTrigger id="branch_id">
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="">Todas</SelectItem>
+                                            {branches.map((branch) => (
+                                                <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                    {branch.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 mt-4">
+                                <Button onClick={handleFilter}>
+                                    <Search className="mr-2 h-4 w-4" />
+                                    Aplicar Filtros
+                                </Button>
+                                <Button onClick={clearFilters} variant="outline">
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Limpiar
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Resumen */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Ventas a Crédito</div>
-                            <div className="text-2xl font-bold">{totals.total_sales}</div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Ventas a Crédito</div>
+                                <div className="text-2xl font-bold">{totals.total_sales}</div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Total Vendido</div>
-                            <div className="text-2xl font-bold">
-                                {formatCurrency(totals.total_amount)}
-                            </div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Total Vendido</div>
+                                <div className="text-2xl font-bold">
+                                    {formatCurrency(totals.total_amount)}
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Total Cobrado</div>
-                            <div className="text-2xl font-bold text-green-600">
-                                {formatCurrency(totals.total_paid)}
-                            </div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Total Cobrado</div>
+                                <div className="text-2xl font-bold text-green-600">
+                                    {formatCurrency(totals.total_paid)}
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Por Cobrar</div>
-                            <div className="text-2xl font-bold text-blue-600">
-                                {formatCurrency(totals.total_pending)}
-                            </div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Por Cobrar</div>
+                                <div className="text-2xl font-bold text-blue-600">
+                                    {formatCurrency(totals.total_pending)}
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4 bg-red-50">
-                            <div className="text-sm text-red-800">Vencido</div>
-                            <div className="text-2xl font-bold text-red-600">
-                                {formatCurrency(totals.total_overdue)}
-                            </div>
+                        <Card className="bg-red-50">
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-red-800">Vencido</div>
+                                <div className="text-2xl font-bold text-red-600">
+                                    {formatCurrency(totals.total_overdue)}
+                                </div>
+                            </CardContent>
                         </Card>
                     </div>
                 )}
@@ -304,70 +505,126 @@ export default function ReceivablesReport({
 
                 {/* Tabla de Ventas */}
                 <Card>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="border-b bg-muted/50">
-                                <tr>
-                                    <th className="text-left p-4 font-medium">N° Venta</th>
-                                    <th className="text-left p-4 font-medium">Fecha</th>
-                                    <th className="text-left p-4 font-medium">Cliente</th>
-                                    <th className="text-left p-4 font-medium">Sucursal</th>
-                                    <th className="text-right p-4 font-medium">Total</th>
-                                    <th className="text-right p-4 font-medium">Inicial</th>
-                                    <th className="text-right p-4 font-medium">Saldo</th>
-                                    <th className="text-center p-4 font-medium">Cuotas</th>
-                                    <th className="text-center p-4 font-medium">Estado</th>
-                                    <th className="text-center p-4 font-medium">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sales.length > 0 ? (
-                                    sales.map((item) => (
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Cuentas por Cobrar</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Label className="text-xs text-muted-foreground">Mostrar:</Label>
+                            <Select value={filterData.per_page} onValueChange={handlePerPageChange}>
+                                <SelectTrigger className="w-[80px] h-8">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="15">15</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('sale_number')}
+                                    >
+                                        <div className="flex items-center">
+                                            N° Venta
+                                            <SortIcon field="sale_number" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('sale_date')}
+                                    >
+                                        <div className="flex items-center">
+                                            Fecha
+                                            <SortIcon field="sale_date" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('customer')}
+                                    >
+                                        <div className="flex items-center">
+                                            Cliente
+                                            <SortIcon field="customer" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead>Sucursal</TableHead>
+                                    <TableHead
+                                        className="text-right cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('total')}
+                                    >
+                                        <div className="flex items-center justify-end">
+                                            Total
+                                            <SortIcon field="total" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="text-right">Inicial</TableHead>
+                                    <TableHead
+                                        className="text-right cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('remaining_balance')}
+                                    >
+                                        <div className="flex items-center justify-end">
+                                            Saldo
+                                            <SortIcon field="remaining_balance" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="text-center">Cuotas</TableHead>
+                                    <TableHead className="text-center">Estado</TableHead>
+                                    <TableHead className="text-center">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {sales?.data && sales.data.length > 0 ? (
+                                    sales.data.map((item) => (
                                         <>
-                                            <tr
+                                            <TableRow
                                                 key={item.sale.id}
-                                                className={`border-b hover:bg-muted/50 ${
-                                                    item.has_overdue ? 'bg-red-50' : ''
-                                                }`}
+                                                className={item.has_overdue ? 'bg-red-50' : ''}
                                             >
-                                                <td className="p-4 font-medium">
+                                                <TableCell className="font-mono font-medium">
                                                     {item.sale.sale_number}
-                                                </td>
-                                                <td className="p-4">
+                                                </TableCell>
+                                                <TableCell>
                                                     {format(new Date(item.sale.sale_date), 'dd/MM/yyyy')}
-                                                </td>
-                                                <td className="p-4">{item.sale.customer.name}</td>
-                                                <td className="p-4">{item.sale.branch.name}</td>
-                                                <td className="p-4 text-right font-medium">
+                                                </TableCell>
+                                                <TableCell>{item.sale.customer.name}</TableCell>
+                                                <TableCell>{item.sale.branch.name}</TableCell>
+                                                <TableCell className="text-right font-medium">
                                                     {formatCurrency(item.sale.total)}
-                                                </td>
-                                                <td className="p-4 text-right">
+                                                </TableCell>
+                                                <TableCell className="text-right">
                                                     {formatCurrency(item.sale.initial_payment)}
-                                                </td>
-                                                <td className="p-4 text-right font-bold text-blue-600">
+                                                </TableCell>
+                                                <TableCell className="text-right font-bold text-blue-600">
                                                     {formatCurrency(item.sale.remaining_balance)}
-                                                </td>
-                                                <td className="p-4 text-center">
+                                                </TableCell>
+                                                <TableCell className="text-center">
                                                     <span className="text-sm">
                                                         {item.paid_installments} / {item.total_installments}
                                                     </span>
-                                                </td>
-                                                <td className="p-4 text-center">
+                                                </TableCell>
+                                                <TableCell className="text-center">
                                                     {item.has_overdue ? (
-                                                        <span
-                                                            className={`inline-block px-2 py-1 text-xs font-semibold rounded ${getDaysOverdueBadge(
+                                                        <Badge
+                                                            className={getDaysOverdueBadge(
                                                                 item.max_days_overdue
-                                                            )}`}
+                                                            )}
                                                         >
                                                             {item.max_days_overdue} días atraso
-                                                        </span>
+                                                        </Badge>
                                                     ) : (
-                                                        <span className="text-green-600 text-sm font-medium">
+                                                        <Badge variant="outline" className="text-green-600 border-green-600">
                                                             Al día
-                                                        </span>
+                                                        </Badge>
                                                     )}
-                                                </td>
-                                                <td className="p-4">
+                                                </TableCell>
+                                                <TableCell>
                                                     <div className="flex gap-2 justify-center">
                                                         <Button
                                                             variant="ghost"
@@ -382,12 +639,12 @@ export default function ReceivablesReport({
                                                             </Link>
                                                         </Button>
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                </TableCell>
+                                            </TableRow>
                                             {/* Detalle de cuotas expandible */}
                                             {expandedSales.has(item.sale.id) && (
-                                                <tr>
-                                                    <td colSpan={10} className="p-4 bg-gray-50">
+                                                <TableRow>
+                                                    <TableCell colSpan={10} className="p-4 bg-gray-50">
                                                         <div className="text-sm font-semibold mb-2">
                                                             Detalle de Cuotas:
                                                         </div>
@@ -446,21 +703,84 @@ export default function ReceivablesReport({
                                                                 ))}
                                                             </tbody>
                                                         </table>
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             )}
                                         </>
                                     ))
                                 ) : (
-                                    <tr>
-                                        <td colSpan={10} className="p-8 text-center text-muted-foreground">
-                                            No se encontraron cuentas por cobrar con los filtros aplicados
-                                        </td>
-                                    </tr>
+                                    <TableRow>
+                                        <TableCell colSpan={10} className="text-center py-8">
+                                            <p className="text-muted-foreground">
+                                                No se encontraron cuentas por cobrar con los filtros aplicados
+                                            </p>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+
+                        {/* Paginación */}
+                        {sales?.data && sales.data.length > 0 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                                <div className="text-sm text-muted-foreground">
+                                    Mostrando <span className="font-medium">{sales.from}</span> a{' '}
+                                    <span className="font-medium">{sales.to}</span> de{' '}
+                                    <span className="font-medium">{sales.total}</span> resultados
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePageChange(sales.current_page - 1)}
+                                        disabled={sales.current_page === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Anterior
+                                    </Button>
+
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: Math.min(5, sales.last_page) }, (_, i) => {
+                                            let pageNum;
+                                            if (sales.last_page <= 5) {
+                                                pageNum = i + 1;
+                                            } else if (sales.current_page <= 3) {
+                                                pageNum = i + 1;
+                                            } else if (sales.current_page >= sales.last_page - 2) {
+                                                pageNum = sales.last_page - 4 + i;
+                                            } else {
+                                                pageNum = sales.current_page - 2 + i;
+                                            }
+
+                                            return (
+                                                <Button
+                                                    key={pageNum}
+                                                    variant={
+                                                        sales.current_page === pageNum ? 'default' : 'outline'
+                                                    }
+                                                    size="sm"
+                                                    onClick={() => handlePageChange(pageNum)}
+                                                    className="w-8 h-8 p-0"
+                                                >
+                                                    {pageNum}
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePageChange(sales.current_page + 1)}
+                                        disabled={sales.current_page === sales.last_page}
+                                    >
+                                        Siguiente
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
             </div>
         </AppLayout>

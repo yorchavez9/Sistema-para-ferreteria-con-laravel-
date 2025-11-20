@@ -2,11 +2,41 @@ import AppLayout from '@/layouts/app-layout';
 import { Head, router, Link } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useState, FormEvent } from 'react';
-import { FileDown, Search, RefreshCw, Eye, FileText } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
+import {
+    FileDown,
+    Search,
+    RefreshCw,
+    Eye,
+    FileText,
+    Filter,
+    ArrowUpDown,
+    ArrowUp,
+    ArrowDown,
+    ChevronLeft,
+    ChevronRight,
+    Wallet,
+} from 'lucide-react';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { useDebouncedCallback } from 'use-debounce';
 import { format } from 'date-fns';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -35,18 +65,18 @@ interface CashSession {
         id: number;
         name: string;
     };
-    movements: Array<{
-        id: number;
-        type: string;
-        description: string;
-        amount: number;
-        payment_method: string;
-        created_at: string;
-    }>;
 }
 
 interface Props {
-    sessions: CashSession[];
+    sessions: {
+        data: CashSession[];
+        current_page: number;
+        last_page: number;
+        per_page: number;
+        total: number;
+        from: number;
+        to: number;
+    };
     totals: {
         count: number;
         total_opening_balance: number;
@@ -57,64 +87,48 @@ interface Props {
     branches: Array<{ id: number; name: string }>;
     cashRegisters: Array<{ id: number; name: string }>;
     users: Array<{ id: number; name: string }>;
-    filters: Record<string, string>;
-    dateFrom?: string;
-    dateTo?: string;
+    filters: {
+        search?: string;
+        date_from?: string;
+        date_to?: string;
+        branch_id?: string;
+        cash_register_id?: string;
+        user_id?: string;
+        status?: string;
+        sort_field?: string;
+        sort_direction?: string;
+        per_page?: string;
+    };
 }
 
 export default function CashDailyReport({
-    sessions = [],
-    totals,
+    sessions = { data: [], current_page: 1, last_page: 1, per_page: 15, total: 0, from: 0, to: 0 },
+    totals = {
+        count: 0,
+        total_opening_balance: 0,
+        total_expected_balance: 0,
+        total_actual_balance: 0,
+        total_difference: 0,
+    },
     branches = [],
     cashRegisters = [],
     users = [],
     filters: initialFilters = {},
-    dateFrom,
-    dateTo,
 }: Props) {
-    const [filters, setFilters] = useState({
-        date_from: dateFrom || '',
-        date_to: dateTo || '',
-        branch_id: '',
-        cash_register_id: '',
-        user_id: '',
-        status: '',
+    const [searchTerm, setSearchTerm] = useState(initialFilters.search || '');
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterData, setFilterData] = useState({
+        date_from: initialFilters.date_from || '',
+        date_to: initialFilters.date_to || '',
+        branch_id: initialFilters.branch_id || '',
+        cash_register_id: initialFilters.cash_register_id || '',
+        user_id: initialFilters.user_id || '',
+        status: initialFilters.status || '',
+        per_page: initialFilters.per_page || '15',
     });
-
+    const [sortField, setSortField] = useState(initialFilters.sort_field || 'opened_at');
+    const [sortDirection, setSortDirection] = useState(initialFilters.sort_direction || 'desc');
     const [isGenerating, setIsGenerating] = useState(false);
-
-    const handleFilterChange = (name: string, value: string) => {
-        setFilters((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        router.get('/reports/cash/daily', filters, {
-            preserveState: true,
-            preserveScroll: true,
-        });
-    };
-
-    const handleClearFilters = () => {
-        setFilters({
-            date_from: '',
-            date_to: '',
-            branch_id: '',
-            cash_register_id: '',
-            user_id: '',
-            status: '',
-        });
-        router.get('/reports/cash/daily');
-    };
-
-    const handleGeneratePdf = () => {
-        setIsGenerating(true);
-        const queryString = new URLSearchParams(
-            Object.entries(filters).filter(([_, value]) => value !== '')
-        ).toString();
-        window.open(`/reports/cash/daily/pdf?${queryString}`, '_blank');
-        setTimeout(() => setIsGenerating(false), 1000);
-    };
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('es-PE', {
@@ -123,12 +137,145 @@ export default function CashDailyReport({
         }).format(amount);
     };
 
+    // Búsqueda en tiempo real con debounce
+    const debouncedSearch = useDebouncedCallback((value: string) => {
+        const params: any = {
+            search: value,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+            per_page: filterData.per_page,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/cash/daily', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    }, 500);
+
+    const handleSearchChange = (value: string) => {
+        setSearchTerm(value);
+        debouncedSearch(value);
+    };
+
+    const handleFilter = () => {
+        const params: any = {
+            search: searchTerm,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+            per_page: filterData.per_page,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/cash/daily', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const clearFilters = () => {
+        const clearedFilters = {
+            date_from: '',
+            date_to: '',
+            branch_id: '',
+            cash_register_id: '',
+            user_id: '',
+            status: '',
+            per_page: '15',
+        };
+        setFilterData(clearedFilters);
+        setSearchTerm('');
+
+        router.get('/reports/cash/daily', {
+            per_page: '15',
+            sort_field: sortField,
+            sort_direction: sortDirection,
+        });
+    };
+
+    const handleSort = (field: string) => {
+        const newDirection = sortField === field && sortDirection === 'asc' ? 'desc' : 'asc';
+        setSortField(field);
+        setSortDirection(newDirection);
+
+        const params: any = {
+            search: searchTerm,
+            sort_field: field,
+            sort_direction: newDirection,
+            per_page: filterData.per_page,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/cash/daily', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handlePerPageChange = (value: string) => {
+        setFilterData({ ...filterData, per_page: value });
+
+        const params: any = {
+            search: searchTerm,
+            per_page: value,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/cash/daily', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handlePageChange = (page: number) => {
+        const params: any = {
+            page: page,
+            search: searchTerm,
+            per_page: filterData.per_page,
+            sort_field: sortField,
+            sort_direction: sortDirection,
+        };
+
+        Object.entries(filterData).forEach(([key, val]) => {
+            if (val && key !== 'per_page') params[key] = val;
+        });
+
+        router.get('/reports/cash/daily', params, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    };
+
+    const handleGeneratePdf = () => {
+        setIsGenerating(true);
+        const params: any = { search: searchTerm, ...filterData };
+        const queryString = new URLSearchParams(
+            Object.entries(params).filter(([_, value]) => value !== '')
+        ).toString();
+        window.open(`/reports/cash/daily/pdf?${queryString}`, '_blank');
+        setTimeout(() => setIsGenerating(false), 1000);
+    };
+
     const getStatusBadge = (status: string) => {
         const badges: Record<string, string> = {
-            abierta: 'bg-blue-100 text-blue-800',
-            cerrada: 'bg-green-100 text-green-800',
+            abierta: 'secondary',
+            cerrada: 'default',
         };
-        return badges[status] || 'bg-gray-100 text-gray-800';
+        return badges[status] || 'outline';
     };
 
     const getDifferenceBadge = (difference: number) => {
@@ -140,11 +287,18 @@ export default function CashDailyReport({
         return 'text-gray-600'; // Sin diferencia
     };
 
+    const SortIcon = ({ field }: { field: string }) => {
+        if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+        return sortDirection === 'asc'
+            ? <ArrowUp className="h-3 w-3 ml-1" />
+            : <ArrowDown className="h-3 w-3 ml-1" />;
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Reporte de Caja Diaria" />
 
-            <div className="flex h-full flex-1 flex-col gap-6 p-6">
+            <div className="space-y-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
@@ -163,224 +317,333 @@ export default function CashDailyReport({
                     </Button>
                 </div>
 
-                {/* Filtros */}
-                <Card className="p-6">
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
-                            {/* Fecha Desde */}
-                            <div className="space-y-2">
-                                <Label htmlFor="date_from">Fecha Desde</Label>
+                {/* Barra de Búsqueda */}
+                <Card>
+                    <CardContent className="pt-6">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    id="date_from"
-                                    type="date"
-                                    value={filters.date_from}
-                                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                    type="text"
+                                    placeholder="Buscar por ID de sesión o cajero..."
+                                    value={searchTerm}
+                                    onChange={(e) => handleSearchChange(e.target.value)}
+                                    className="pl-10"
                                 />
                             </div>
-
-                            {/* Fecha Hasta */}
-                            <div className="space-y-2">
-                                <Label htmlFor="date_to">Fecha Hasta</Label>
-                                <Input
-                                    id="date_to"
-                                    type="date"
-                                    value={filters.date_to}
-                                    onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                                />
-                            </div>
-
-                            {/* Sucursal */}
-                            <div className="space-y-2">
-                                <Label htmlFor="branch_id">Sucursal</Label>
-                                <select
-                                    id="branch_id"
-                                    value={filters.branch_id}
-                                    onChange={(e) => handleFilterChange('branch_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todas</option>
-                                    {branches.map((branch) => (
-                                        <option key={branch.id} value={branch.id}>
-                                            {branch.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Caja Registradora */}
-                            <div className="space-y-2">
-                                <Label htmlFor="cash_register_id">Caja Registradora</Label>
-                                <select
-                                    id="cash_register_id"
-                                    value={filters.cash_register_id}
-                                    onChange={(e) => handleFilterChange('cash_register_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todas</option>
-                                    {cashRegisters.map((register) => (
-                                        <option key={register.id} value={register.id}>
-                                            {register.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Usuario */}
-                            <div className="space-y-2">
-                                <Label htmlFor="user_id">Cajero</Label>
-                                <select
-                                    id="user_id"
-                                    value={filters.user_id}
-                                    onChange={(e) => handleFilterChange('user_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todos</option>
-                                    {users.map((user) => (
-                                        <option key={user.id} value={user.id}>
-                                            {user.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Estado */}
-                            <div className="space-y-2">
-                                <Label htmlFor="status">Estado</Label>
-                                <select
-                                    id="status"
-                                    value={filters.status}
-                                    onChange={(e) => handleFilterChange('status', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todos</option>
-                                    <option value="abierta">Abierta</option>
-                                    <option value="cerrada">Cerrada</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                            <Button type="submit">
-                                <Search className="mr-2 h-4 w-4" />
-                                Buscar
-                            </Button>
-                            <Button type="button" variant="outline" onClick={handleClearFilters}>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Limpiar Filtros
+                            <Button onClick={() => setShowFilters(!showFilters)} variant="outline">
+                                <Filter className="h-4 w-4 mr-2" />
+                                {showFilters ? 'Ocultar Filtros' : 'Filtros Avanzados'}
                             </Button>
                         </div>
-                    </form>
+                    </CardContent>
                 </Card>
 
-                {/* Resumen */}
+                {/* Estadísticas Resumidas */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Sesiones</div>
-                            <div className="text-2xl font-bold">{totals.count}</div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Sesiones</div>
+                                <div className="text-2xl font-bold">{totals.count}</div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Saldo Inicial Total</div>
-                            <div className="text-2xl font-bold">
-                                {formatCurrency(totals.total_opening_balance)}
-                            </div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Saldo Inicial Total</div>
+                                <div className="text-2xl font-bold">
+                                    {formatCurrency(totals.total_opening_balance)}
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Saldo Esperado</div>
-                            <div className="text-2xl font-bold">
-                                {formatCurrency(totals.total_expected_balance)}
-                            </div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Saldo Esperado</div>
+                                <div className="text-2xl font-bold">
+                                    {formatCurrency(totals.total_expected_balance)}
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Saldo Real</div>
-                            <div className="text-2xl font-bold text-green-600">
-                                {formatCurrency(totals.total_actual_balance)}
-                            </div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Saldo Real</div>
+                                <div className="text-2xl font-bold text-green-600">
+                                    {formatCurrency(totals.total_actual_balance)}
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Diferencia Total</div>
-                            <div className={`text-2xl font-bold ${getDifferenceBadge(totals.total_difference)}`}>
-                                {formatCurrency(totals.total_difference)}
-                            </div>
+                        <Card>
+                            <CardContent className="pt-5 pb-4">
+                                <div className="text-sm text-muted-foreground">Diferencia Total</div>
+                                <div
+                                    className={`text-2xl font-bold ${getDifferenceBadge(
+                                        totals.total_difference
+                                    )}`}
+                                >
+                                    {formatCurrency(totals.total_difference)}
+                                </div>
+                            </CardContent>
                         </Card>
                     </div>
                 )}
 
+                {/* Filtros Avanzados */}
+                {showFilters && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Filtros Avanzados</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_from">Fecha Desde</Label>
+                                    <Input
+                                        id="date_from"
+                                        type="date"
+                                        value={filterData.date_from}
+                                        onChange={(e) =>
+                                            setFilterData({ ...filterData, date_from: e.target.value })
+                                        }
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_to">Fecha Hasta</Label>
+                                    <Input
+                                        id="date_to"
+                                        type="date"
+                                        value={filterData.date_to}
+                                        onChange={(e) =>
+                                            setFilterData({ ...filterData, date_to: e.target.value })
+                                        }
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="branch_id">Sucursal</Label>
+                                    <Select
+                                        value={filterData.branch_id}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, branch_id: value })
+                                        }
+                                    >
+                                        <SelectTrigger id="branch_id">
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="">Todas</SelectItem>
+                                            {branches.map((branch) => (
+                                                <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                    {branch.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="cash_register_id">Caja Registradora</Label>
+                                    <Select
+                                        value={filterData.cash_register_id}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, cash_register_id: value })
+                                        }
+                                    >
+                                        <SelectTrigger id="cash_register_id">
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="">Todas</SelectItem>
+                                            {cashRegisters.map((register) => (
+                                                <SelectItem key={register.id} value={register.id.toString()}>
+                                                    {register.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="user_id">Cajero</Label>
+                                    <Select
+                                        value={filterData.user_id}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, user_id: value })
+                                        }
+                                    >
+                                        <SelectTrigger id="user_id">
+                                            <SelectValue placeholder="Todos" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="">Todos</SelectItem>
+                                            {users.map((user) => (
+                                                <SelectItem key={user.id} value={user.id.toString()}>
+                                                    {user.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="status">Estado</Label>
+                                    <Select
+                                        value={filterData.status}
+                                        onValueChange={(value) =>
+                                            setFilterData({ ...filterData, status: value })
+                                        }
+                                    >
+                                        <SelectTrigger id="status">
+                                            <SelectValue placeholder="Todos" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="">Todos</SelectItem>
+                                            <SelectItem value="abierta">Abierta</SelectItem>
+                                            <SelectItem value="cerrada">Cerrada</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-2 mt-4">
+                                <Button onClick={handleFilter}>
+                                    <Search className="mr-2 h-4 w-4" />
+                                    Aplicar Filtros
+                                </Button>
+                                <Button onClick={clearFilters} variant="outline">
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Limpiar
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
                 {/* Tabla de Sesiones */}
                 <Card>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="border-b bg-muted/50">
-                                <tr>
-                                    <th className="text-left p-4 font-medium">ID</th>
-                                    <th className="text-left p-4 font-medium">Apertura</th>
-                                    <th className="text-left p-4 font-medium">Cierre</th>
-                                    <th className="text-left p-4 font-medium">Caja / Sucursal</th>
-                                    <th className="text-left p-4 font-medium">Cajero</th>
-                                    <th className="text-right p-4 font-medium">Saldo Inicial</th>
-                                    <th className="text-right p-4 font-medium">Saldo Esperado</th>
-                                    <th className="text-right p-4 font-medium">Saldo Real</th>
-                                    <th className="text-right p-4 font-medium">Diferencia</th>
-                                    <th className="text-center p-4 font-medium">Estado</th>
-                                    <th className="text-center p-4 font-medium">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {sessions.length > 0 ? (
-                                    sessions.map((session) => (
-                                        <tr key={session.id} className="border-b hover:bg-muted/50">
-                                            <td className="p-4 font-medium">#{session.id}</td>
-                                            <td className="p-4">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle>Sesiones de Caja</CardTitle>
+                        <div className="flex items-center gap-2">
+                            <Label className="text-xs text-muted-foreground">Mostrar:</Label>
+                            <Select value={filterData.per_page} onValueChange={handlePerPageChange}>
+                                <SelectTrigger className="w-[80px] h-8">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="15">15</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('id')}
+                                    >
+                                        <div className="flex items-center">
+                                            ID
+                                            <SortIcon field="id" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead
+                                        className="cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('opened_at')}
+                                    >
+                                        <div className="flex items-center">
+                                            Apertura
+                                            <SortIcon field="opened_at" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead>Cierre</TableHead>
+                                    <TableHead>Caja / Sucursal</TableHead>
+                                    <TableHead>Cajero</TableHead>
+                                    <TableHead
+                                        className="text-right cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('opening_balance')}
+                                    >
+                                        <div className="flex items-center justify-end">
+                                            Saldo Inicial
+                                            <SortIcon field="opening_balance" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="text-right">Saldo Esperado</TableHead>
+                                    <TableHead className="text-right">Saldo Real</TableHead>
+                                    <TableHead
+                                        className="text-right cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleSort('difference')}
+                                    >
+                                        <div className="flex items-center justify-end">
+                                            Diferencia
+                                            <SortIcon field="difference" />
+                                        </div>
+                                    </TableHead>
+                                    <TableHead className="text-center">Estado</TableHead>
+                                    <TableHead className="text-center">Acciones</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {sessions?.data && sessions.data.length > 0 ? (
+                                    sessions.data.map((session) => (
+                                        <TableRow key={session.id}>
+                                            <TableCell className="font-medium">#{session.id}</TableCell>
+                                            <TableCell>
                                                 {format(new Date(session.opened_at), 'dd/MM/yyyy HH:mm')}
-                                            </td>
-                                            <td className="p-4">
+                                            </TableCell>
+                                            <TableCell>
                                                 {session.closed_at
                                                     ? format(new Date(session.closed_at), 'dd/MM/yyyy HH:mm')
                                                     : '-'}
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="text-sm">
-                                                    <div className="font-medium">{session.cash_register.name}</div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div>
+                                                    <p className="font-medium">{session.cash_register.name}</p>
                                                     {session.cash_register.branch && (
-                                                        <div className="text-muted-foreground">
+                                                        <p className="text-xs text-muted-foreground">
                                                             {session.cash_register.branch.name}
-                                                        </div>
+                                                        </p>
                                                     )}
                                                 </div>
-                                            </td>
-                                            <td className="p-4">{session.user.name}</td>
-                                            <td className="p-4 text-right">
+                                            </TableCell>
+                                            <TableCell>{session.user.name}</TableCell>
+                                            <TableCell className="text-right">
                                                 {formatCurrency(session.opening_balance)}
-                                            </td>
-                                            <td className="p-4 text-right">
+                                            </TableCell>
+                                            <TableCell className="text-right">
                                                 {session.expected_balance !== undefined
                                                     ? formatCurrency(session.expected_balance)
                                                     : '-'}
-                                            </td>
-                                            <td className="p-4 text-right">
+                                            </TableCell>
+                                            <TableCell className="text-right">
                                                 {session.actual_balance !== undefined
                                                     ? formatCurrency(session.actual_balance)
                                                     : '-'}
-                                            </td>
-                                            <td className="p-4 text-right">
+                                            </TableCell>
+                                            <TableCell className="text-right">
                                                 {session.difference !== undefined ? (
-                                                    <span className={`font-bold ${getDifferenceBadge(session.difference)}`}>
+                                                    <span
+                                                        className={`font-bold ${getDifferenceBadge(
+                                                            session.difference
+                                                        )}`}
+                                                    >
                                                         {formatCurrency(session.difference)}
                                                     </span>
                                                 ) : (
                                                     '-'
                                                 )}
-                                            </td>
-                                            <td className="p-4 text-center">
-                                                <span
-                                                    className={`inline-block px-2 py-1 text-xs font-semibold rounded ${getStatusBadge(
-                                                        session.status
-                                                    )}`}
-                                                >
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                <Badge variant={getStatusBadge(session.status) as any}>
                                                     {session.status}
-                                                </span>
-                                            </td>
-                                            <td className="p-4">
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell>
                                                 <div className="flex gap-2 justify-center">
                                                     <Button variant="ghost" size="sm" asChild>
                                                         <Link href={`/cash/${session.id}`}>
@@ -402,19 +665,85 @@ export default function CashDailyReport({
                                                         </Button>
                                                     )}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ))
                                 ) : (
-                                    <tr>
-                                        <td colSpan={11} className="p-8 text-center text-muted-foreground">
-                                            No se encontraron sesiones de caja con los filtros aplicados
-                                        </td>
-                                    </tr>
+                                    <TableRow>
+                                        <TableCell colSpan={11} className="text-center py-8">
+                                            <Wallet className="h-10 w-10 mx-auto text-muted-foreground opacity-50" />
+                                            <p className="mt-2 text-muted-foreground">
+                                                No se encontraron sesiones de caja con los filtros aplicados
+                                            </p>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+
+                        {/* Paginación */}
+                        {sessions?.data && sessions.data.length > 0 && (
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                                <div className="text-sm text-muted-foreground">
+                                    Mostrando <span className="font-medium">{sessions.from}</span> a{' '}
+                                    <span className="font-medium">{sessions.to}</span> de{' '}
+                                    <span className="font-medium">{sessions.total}</span> resultados
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePageChange(sessions.current_page - 1)}
+                                        disabled={sessions.current_page === 1}
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                        Anterior
+                                    </Button>
+
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: Math.min(5, sessions.last_page) }, (_, i) => {
+                                            let pageNum;
+                                            if (sessions.last_page <= 5) {
+                                                pageNum = i + 1;
+                                            } else if (sessions.current_page <= 3) {
+                                                pageNum = i + 1;
+                                            } else if (sessions.current_page >= sessions.last_page - 2) {
+                                                pageNum = sessions.last_page - 4 + i;
+                                            } else {
+                                                pageNum = sessions.current_page - 2 + i;
+                                            }
+
+                                            return (
+                                                <Button
+                                                    key={pageNum}
+                                                    variant={
+                                                        sessions.current_page === pageNum
+                                                            ? 'default'
+                                                            : 'outline'
+                                                    }
+                                                    size="sm"
+                                                    onClick={() => handlePageChange(pageNum)}
+                                                    className="w-8 h-8 p-0"
+                                                >
+                                                    {pageNum}
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handlePageChange(sessions.current_page + 1)}
+                                        disabled={sessions.current_page === sessions.last_page}
+                                    >
+                                        Siguiente
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
                 </Card>
             </div>
         </AppLayout>

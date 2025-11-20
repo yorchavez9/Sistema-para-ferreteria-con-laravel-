@@ -28,6 +28,18 @@ class ReportService
     {
         $query = Sale::with(['customer', 'branch', 'user', 'details.product']);
 
+        // Aplicar búsqueda
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('sale_number', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                          ->orWhere('document_number', 'like', "%{$search}%");
+                    });
+            });
+        }
+
         // Aplicar filtros
         if (!empty($filters['date_from'])) {
             $query->where('sale_date', '>=', $filters['date_from']);
@@ -65,20 +77,79 @@ class ReportService
             $query->where('status', $filters['status']);
         }
 
-        $sales = $query->orderBy('sale_date', 'desc')->get();
+        // Ordenamiento
+        $sortField = $filters['sort_field'] ?? 'sale_date';
+        $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        // Mapear campos de ordenamiento
+        $sortMap = [
+            'sale_number' => 'sale_number',
+            'sale_date' => 'sale_date',
+            'customer' => 'customer_id',
+            'total' => 'total',
+        ];
+
+        $sortColumn = $sortMap[$sortField] ?? 'sale_date';
+        $query->orderBy($sortColumn, $sortDirection);
+
+        // Paginación
+        $perPage = $filters['per_page'] ?? 15;
+        $sales = $query->paginate($perPage)->withQueryString();
+
+        // Calcular totales de TODAS las ventas (sin paginación)
+        $allSalesQuery = Sale::query();
+
+        // Aplicar los mismos filtros para totales
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $allSalesQuery->where(function ($q) use ($search) {
+                $q->where('sale_number', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                          ->orWhere('document_number', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if (!empty($filters['date_from'])) {
+            $allSalesQuery->where('sale_date', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $allSalesQuery->where('sale_date', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['branch_id'])) {
+            $allSalesQuery->where('branch_id', $filters['branch_id']);
+        }
+        if (!empty($filters['user_id'])) {
+            $allSalesQuery->where('user_id', $filters['user_id']);
+        }
+        if (!empty($filters['document_type'])) {
+            $allSalesQuery->where('document_type', $filters['document_type']);
+        }
+        if (!empty($filters['payment_method'])) {
+            $allSalesQuery->where('payment_method', $filters['payment_method']);
+        }
+        if (!empty($filters['payment_type'])) {
+            $allSalesQuery->where('payment_type', $filters['payment_type']);
+        }
+        if (!empty($filters['status'])) {
+            $allSalesQuery->where('status', $filters['status']);
+        }
+
+        $allSales = $allSalesQuery->get();
 
         // Calcular totales
         $totals = [
-            'count' => $sales->count(),
-            'subtotal' => $sales->sum('subtotal'),
-            'tax' => $sales->sum('tax'),
-            'discount' => $sales->sum('discount'),
-            'total' => $sales->sum('total'),
-            'avg_ticket' => $sales->count() > 0 ? $sales->sum('total') / $sales->count() : 0,
+            'count' => $allSales->count(),
+            'subtotal' => $allSales->sum('subtotal'),
+            'tax' => $allSales->sum('tax'),
+            'discount' => $allSales->sum('discount'),
+            'total' => $allSales->sum('total'),
+            'avg_ticket' => $allSales->count() > 0 ? $allSales->sum('total') / $allSales->count() : 0,
         ];
 
         // Totales por método de pago
-        $totalsByPaymentMethod = $sales->groupBy('payment_method')->map(function ($group) {
+        $totalsByPaymentMethod = $allSales->groupBy('payment_method')->map(function ($group) {
             return [
                 'count' => $group->count(),
                 'total' => $group->sum('total'),
@@ -86,7 +157,7 @@ class ReportService
         });
 
         // Totales por tipo de documento
-        $totalsByDocumentType = $sales->groupBy('document_type')->map(function ($group) {
+        $totalsByDocumentType = $allSales->groupBy('document_type')->map(function ($group) {
             return [
                 'count' => $group->count(),
                 'total' => $group->sum('total'),
@@ -98,13 +169,11 @@ class ReportService
             'totals' => $totals,
             'totalsByPaymentMethod' => $totalsByPaymentMethod,
             'totalsByDocumentType' => $totalsByDocumentType,
-            'filters' => $this->formatFilters($filters),
+            'filters' => $filters,
             'branches' => Branch::all(),
             'users' => User::all(),
             'customers' => Customer::all(),
             'reportTitle' => 'Reporte de Ventas Detallado',
-            'dateFrom' => $filters['date_from'] ?? null,
-            'dateTo' => $filters['date_to'] ?? null,
         ];
     }
 
@@ -162,7 +231,21 @@ class ReportService
      */
     public function getCashDaily(array $filters = [])
     {
-        $query = CashSession::with(['cashRegister.branch', 'user', 'movements']);
+        $query = CashSession::with(['cashRegister.branch', 'user']);
+
+        // Aplicar búsqueda
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('cashRegister', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
 
         if (!empty($filters['date_from'])) {
             $query->whereDate('opened_at', '>=', $filters['date_from']);
@@ -173,7 +256,9 @@ class ReportService
         }
 
         if (!empty($filters['branch_id'])) {
-            $query->where('branch_id', $filters['branch_id']);
+            $query->whereHas('cashRegister.branch', function ($q) use ($filters) {
+                $q->where('id', $filters['branch_id']);
+            });
         }
 
         if (!empty($filters['cash_register_id'])) {
@@ -188,27 +273,82 @@ class ReportService
             $query->where('status', $filters['status']);
         }
 
-        $sessions = $query->orderBy('opened_at', 'desc')->get();
+        // Ordenamiento
+        $sortField = $filters['sort_field'] ?? 'opened_at';
+        $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        // Mapear campos de ordenamiento
+        $sortMap = [
+            'id' => 'id',
+            'opened_at' => 'opened_at',
+            'opening_balance' => 'opening_balance',
+            'difference' => 'difference',
+        ];
+
+        $sortColumn = $sortMap[$sortField] ?? 'opened_at';
+        $query->orderBy($sortColumn, $sortDirection);
+
+        // Paginación
+        $perPage = $filters['per_page'] ?? 15;
+        $sessions = $query->paginate($perPage)->withQueryString();
+
+        // Calcular totales de TODAS las sesiones (sin paginación)
+        $allSessionsQuery = CashSession::query();
+
+        // Aplicar los mismos filtros para totales
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $allSessionsQuery->where(function ($q) use ($search) {
+                $q->where('id', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('cashRegister', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if (!empty($filters['date_from'])) {
+            $allSessionsQuery->whereDate('opened_at', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $allSessionsQuery->whereDate('opened_at', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['branch_id'])) {
+            $allSessionsQuery->whereHas('cashRegister.branch', function ($q) use ($filters) {
+                $q->where('id', $filters['branch_id']);
+            });
+        }
+        if (!empty($filters['cash_register_id'])) {
+            $allSessionsQuery->where('cash_register_id', $filters['cash_register_id']);
+        }
+        if (!empty($filters['user_id'])) {
+            $allSessionsQuery->where('user_id', $filters['user_id']);
+        }
+        if (!empty($filters['status'])) {
+            $allSessionsQuery->where('status', $filters['status']);
+        }
+
+        $allSessions = $allSessionsQuery->get();
 
         // Calcular totales
         $totals = [
-            'count' => $sessions->count(),
-            'total_opening_balance' => $sessions->sum('opening_balance'),
-            'total_expected_balance' => $sessions->where('status', 'cerrada')->sum('expected_balance'),
-            'total_actual_balance' => $sessions->where('status', 'cerrada')->sum('actual_balance'),
-            'total_difference' => $sessions->where('status', 'cerrada')->sum('difference'),
+            'count' => $allSessions->count(),
+            'total_opening_balance' => $allSessions->sum('opening_balance'),
+            'total_expected_balance' => $allSessions->where('status', 'cerrada')->sum('expected_balance'),
+            'total_actual_balance' => $allSessions->where('status', 'cerrada')->sum('actual_balance'),
+            'total_difference' => $allSessions->where('status', 'cerrada')->sum('difference'),
         ];
 
         return [
             'sessions' => $sessions,
             'totals' => $totals,
-            'filters' => $this->formatFilters($filters),
+            'filters' => $filters,
             'branches' => Branch::all(),
             'cashRegisters' => \App\Models\CashRegister::all(),
             'users' => User::all(),
             'reportTitle' => 'Reporte de Caja Diaria',
-            'dateFrom' => $filters['date_from'] ?? null,
-            'dateTo' => $filters['date_to'] ?? null,
         ];
     }
 
@@ -255,6 +395,15 @@ class ReportService
     {
         $query = Inventory::with(['product.category', 'product.brand', 'branch']);
 
+        // Aplicar búsqueda
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('product', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
         if (!empty($filters['branch_id'])) {
             $query->where('branch_id', $filters['branch_id']);
         }
@@ -272,17 +421,44 @@ class ReportService
         }
 
         if (!empty($filters['stock_status'])) {
-            if ($filters['stock_status'] === 'low') {
+            if ($filters['stock_status'] === 'bajo') {
                 $query->lowStock();
-            } elseif ($filters['stock_status'] === 'out') {
+            } elseif ($filters['stock_status'] === 'agotado') {
                 $query->outOfStock();
             } elseif ($filters['stock_status'] === 'normal') {
                 $query->normalStock();
             }
         }
 
-        $inventory = $query->get()->map(function ($item) {
-            return [
+        // Ordenamiento
+        $sortField = $filters['sort_field'] ?? 'name';
+        $sortDirection = $filters['sort_direction'] ?? 'asc';
+
+        // Mapear campos de ordenamiento
+        if ($sortField === 'code' || $sortField === 'name') {
+            $query->join('products', 'inventory.product_id', '=', 'products.id')
+                  ->select('inventory.*')
+                  ->orderBy('products.' . $sortField, $sortDirection);
+        } else {
+            $sortMap = [
+                'current_stock' => 'current_stock',
+                'cost_price' => 'cost_price',
+                'sale_price' => 'sale_price',
+                'total_cost_value' => 'current_stock',
+                'total_sale_value' => 'current_stock',
+                'profit_margin' => 'cost_price',
+            ];
+            $sortColumn = $sortMap[$sortField] ?? 'current_stock';
+            $query->orderBy($sortColumn, $sortDirection);
+        }
+
+        // Paginación
+        $perPage = $filters['per_page'] ?? 15;
+        $inventoryPaginated = $query->paginate($perPage)->withQueryString();
+
+        // Transform paginated data
+        $inventoryPaginated->getCollection()->transform(function ($item) {
+            return (object)[
                 'product' => $item->product,
                 'branch' => $item->branch,
                 'current_stock' => $item->current_stock,
@@ -297,20 +473,67 @@ class ReportService
             ];
         });
 
+        // Calcular totales de TODO el inventario (sin paginación)
+        $allInventoryQuery = Inventory::query();
+
+        // Aplicar los mismos filtros para totales
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $allInventoryQuery->whereHas('product', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        if (!empty($filters['branch_id'])) {
+            $allInventoryQuery->where('branch_id', $filters['branch_id']);
+        }
+        if (!empty($filters['category_id'])) {
+            $allInventoryQuery->whereHas('product', function ($q) use ($filters) {
+                $q->where('category_id', $filters['category_id']);
+            });
+        }
+        if (!empty($filters['brand_id'])) {
+            $allInventoryQuery->whereHas('product', function ($q) use ($filters) {
+                $q->where('brand_id', $filters['brand_id']);
+            });
+        }
+        if (!empty($filters['stock_status'])) {
+            if ($filters['stock_status'] === 'bajo') {
+                $allInventoryQuery->lowStock();
+            } elseif ($filters['stock_status'] === 'agotado') {
+                $allInventoryQuery->outOfStock();
+            } elseif ($filters['stock_status'] === 'normal') {
+                $allInventoryQuery->normalStock();
+            }
+        }
+
+        $allInventory = $allInventoryQuery->get();
+
         // Calcular totales
         $totals = [
-            'total_products' => $inventory->count(),
-            'total_cost_value' => $inventory->sum('total_cost_value'),
-            'total_sale_value' => $inventory->sum('total_sale_value'),
-            'potential_profit' => $inventory->sum('total_sale_value') - $inventory->sum('total_cost_value'),
-            'low_stock_count' => $inventory->where('stock_status', 'bajo')->count(),
-            'out_stock_count' => $inventory->where('stock_status', 'agotado')->count(),
+            'total_products' => $allInventory->count(),
+            'total_cost_value' => $allInventory->sum(function ($item) {
+                return $item->current_stock * $item->cost_price;
+            }),
+            'total_sale_value' => $allInventory->sum(function ($item) {
+                return $item->current_stock * $item->sale_price;
+            }),
+            'potential_profit' => $allInventory->sum(function ($item) {
+                return ($item->current_stock * $item->sale_price) - ($item->current_stock * $item->cost_price);
+            }),
+            'low_stock_count' => $allInventory->filter(function ($item) {
+                return $item->is_low_stock && !$item->is_out_of_stock;
+            })->count(),
+            'out_stock_count' => $allInventory->filter(function ($item) {
+                return $item->is_out_of_stock;
+            })->count(),
         ];
 
         return [
-            'inventory' => $inventory,
+            'inventory' => $inventoryPaginated,
             'totals' => $totals,
-            'filters' => $this->formatFilters($filters),
+            'filters' => $filters,
             'branches' => Branch::all(),
             'categories' => Category::all(),
             'brands' => Brand::all(),
@@ -347,6 +570,19 @@ class ReportService
             ->where('payment_type', 'credito')
             ->where('status', 'pendiente');
 
+        // Aplicar búsqueda
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('sale_number', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                          ->orWhere('document_number', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Aplicar filtros
         if (!empty($filters['date_from'])) {
             $query->where('sale_date', '>=', $filters['date_from']);
         }
@@ -363,7 +599,28 @@ class ReportService
             $query->where('branch_id', $filters['branch_id']);
         }
 
-        $sales = $query->get()->map(function ($sale) {
+        // Ordenamiento
+        $sortField = $filters['sort_field'] ?? 'sale_date';
+        $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        // Mapear campos de ordenamiento
+        $sortMap = [
+            'sale_number' => 'sale_number',
+            'sale_date' => 'sale_date',
+            'customer' => 'customer_id',
+            'total' => 'total',
+            'remaining_balance' => 'remaining_balance',
+        ];
+
+        $sortColumn = $sortMap[$sortField] ?? 'sale_date';
+        $query->orderBy($sortColumn, $sortDirection);
+
+        // Paginación
+        $perPage = $filters['per_page'] ?? 15;
+        $salesPaginated = $query->paginate($perPage)->withQueryString();
+
+        // Transformar datos paginados
+        $salesPaginated->getCollection()->transform(function ($sale) {
             $overduePayments = $sale->payments()->overdue()->count();
 
             return [
@@ -377,26 +634,57 @@ class ReportService
             ];
         });
 
+        // Calcular totales de TODAS las ventas (sin paginación)
+        $allSalesQuery = Sale::where('payment_type', 'credito')
+            ->where('status', 'pendiente');
+
+        // Aplicar los mismos filtros para totales
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $allSalesQuery->where(function ($q) use ($search) {
+                $q->where('sale_number', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                          ->orWhere('document_number', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if (!empty($filters['date_from'])) {
+            $allSalesQuery->where('sale_date', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $allSalesQuery->where('sale_date', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['customer_id'])) {
+            $allSalesQuery->where('customer_id', $filters['customer_id']);
+        }
+        if (!empty($filters['branch_id'])) {
+            $allSalesQuery->where('branch_id', $filters['branch_id']);
+        }
+
+        $allSales = $allSalesQuery->with('payments')->get();
+
         // Calcular totales
         $totals = [
-            'total_sales' => $sales->count(),
-            'total_amount' => $sales->sum('sale.total'),
-            'total_paid' => $sales->sum(function ($item) {
-                return $item['sale']->initial_payment + $item['sale']->payments->where('status', 'pagado')->sum('amount');
+            'total_sales' => $allSales->count(),
+            'total_amount' => $allSales->sum('total'),
+            'total_paid' => $allSales->sum(function ($sale) {
+                return $sale->initial_payment + $sale->payments->where('status', 'pagado')->sum('amount');
             }),
-            'total_pending' => $sales->sum('sale.remaining_balance'),
-            'total_overdue' => $sales->where('has_overdue', true)->sum('sale.remaining_balance'),
+            'total_pending' => $allSales->sum('remaining_balance'),
+            'total_overdue' => $allSales->filter(function ($sale) {
+                return $sale->payments()->overdue()->count() > 0;
+            })->sum('remaining_balance'),
         ];
 
         return [
-            'sales' => $sales,
+            'sales' => $salesPaginated,
             'totals' => $totals,
-            'filters' => $this->formatFilters($filters),
+            'filters' => $filters,
             'customers' => Customer::all(),
             'branches' => Branch::all(),
             'reportTitle' => 'Cuentas por Cobrar',
-            'dateFrom' => $filters['date_from'] ?? null,
-            'dateTo' => $filters['date_to'] ?? null,
         ];
     }
 
@@ -411,6 +699,18 @@ class ReportService
     {
         $query = PurchaseOrder::with(['supplier', 'branch', 'user', 'details.product']);
 
+        // Aplicar búsqueda
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Aplicar filtros
         if (!empty($filters['date_from'])) {
             $query->where('order_date', '>=', $filters['date_from']);
         }
@@ -427,39 +727,106 @@ class ReportService
             $query->where('branch_id', $filters['branch_id']);
         }
 
+        if (!empty($filters['user_id'])) {
+            $query->where('user_id', $filters['user_id']);
+        }
+
         if (!empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        $purchases = $query->orderBy('order_date', 'desc')->get();
+        if (!empty($filters['payment_method'])) {
+            $query->where('payment_method', $filters['payment_method']);
+        }
 
-        // Calcular totales
-        $totals = [
-            'count' => $purchases->count(),
-            'subtotal' => $purchases->sum('subtotal'),
-            'tax' => $purchases->sum('tax'),
-            'discount' => $purchases->sum('discount'),
-            'total' => $purchases->sum('total'),
+        // Ordenamiento
+        $sortField = $filters['sort_field'] ?? 'order_date';
+        $sortDirection = $filters['sort_direction'] ?? 'desc';
+
+        // Mapear campos de ordenamiento
+        $sortMap = [
+            'order_number' => 'order_number',
+            'order_date' => 'order_date',
+            'supplier' => 'supplier_id',
+            'total' => 'total',
         ];
 
-        // Totales por estado
-        $totalsByStatus = $purchases->groupBy('status')->map(function ($group) {
+        $sortColumn = $sortMap[$sortField] ?? 'order_date';
+        $query->orderBy($sortColumn, $sortDirection);
+
+        // Paginación
+        $perPage = $filters['per_page'] ?? 15;
+        $purchasesPaginated = $query->paginate($perPage)->withQueryString();
+
+        // Transformar datos paginados
+        $purchasesPaginated->getCollection()->transform(function ($purchase) {
             return [
-                'count' => $group->count(),
-                'total' => $group->sum('total'),
+                'purchase' => $purchase,
+                'total_items' => $purchase->details->sum('quantity'),
+                'received_items' => $purchase->details->sum('quantity_received'),
+                'pending_items' => $purchase->details->sum(function ($detail) {
+                    return $detail->quantity - $detail->quantity_received;
+                }),
             ];
         });
 
+        // Calcular totales de TODAS las compras (sin paginación)
+        $allPurchasesQuery = PurchaseOrder::query();
+
+        // Aplicar los mismos filtros para totales
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $allPurchasesQuery->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if (!empty($filters['date_from'])) {
+            $allPurchasesQuery->where('order_date', '>=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $allPurchasesQuery->where('order_date', '<=', $filters['date_to']);
+        }
+        if (!empty($filters['supplier_id'])) {
+            $allPurchasesQuery->where('supplier_id', $filters['supplier_id']);
+        }
+        if (!empty($filters['branch_id'])) {
+            $allPurchasesQuery->where('branch_id', $filters['branch_id']);
+        }
+        if (!empty($filters['user_id'])) {
+            $allPurchasesQuery->where('user_id', $filters['user_id']);
+        }
+        if (!empty($filters['status'])) {
+            $allPurchasesQuery->where('status', $filters['status']);
+        }
+        if (!empty($filters['payment_method'])) {
+            $allPurchasesQuery->where('payment_method', $filters['payment_method']);
+        }
+
+        $allPurchases = $allPurchasesQuery->get();
+
+        // Calcular totales
+        $totals = [
+            'total_purchases' => $allPurchases->count(),
+            'total_subtotal' => $allPurchases->sum('subtotal'),
+            'total_tax' => $allPurchases->sum('tax'),
+            'total_amount' => $allPurchases->sum('total'),
+            'pending_count' => $allPurchases->where('status', 'pendiente')->count(),
+            'partial_count' => $allPurchases->where('status', 'parcial')->count(),
+            'received_count' => $allPurchases->where('status', 'recibido')->count(),
+        ];
+
         return [
-            'purchases' => $purchases,
+            'purchases' => $purchasesPaginated,
             'totals' => $totals,
-            'totalsByStatus' => $totalsByStatus,
-            'filters' => $this->formatFilters($filters),
+            'filters' => $filters,
             'suppliers' => \App\Models\Supplier::all(),
             'branches' => Branch::all(),
+            'users' => \App\Models\User::all(),
             'reportTitle' => 'Reporte de Compras',
-            'dateFrom' => $filters['date_from'] ?? null,
-            'dateTo' => $filters['date_to'] ?? null,
         ];
     }
 
