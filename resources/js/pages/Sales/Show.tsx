@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { formatCurrency } from '@/lib/format-currency';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -149,14 +150,6 @@ export default function SaleShow({ sale }: SaleShowProps) {
         { title: 'Ventas', href: '/sales' },
         { title: sale.sale_number, href: `/sales/${sale.id}` },
     ];
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-PE', {
-            style: 'currency',
-            currency: 'PEN',
-            minimumFractionDigits: 2,
-        }).format(amount);
-    };
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('es-ES', {

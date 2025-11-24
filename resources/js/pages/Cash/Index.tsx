@@ -1,6 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { Head, Link } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
+import { formatCurrency } from '@/lib/format-currency';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -92,13 +93,6 @@ export default function CashIndex({
     branches,
     cashRegisters,
 }: Props) {
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-PE', {
-            style: 'currency',
-            currency: 'PEN',
-        }).format(amount);
-    };
-
     const getMovementTypeLabel = (type: string) => {
         const types: Record<string, { label: string; color: string }> = {
             venta: { label: 'Venta', color: 'bg-green-100 text-green-800' },

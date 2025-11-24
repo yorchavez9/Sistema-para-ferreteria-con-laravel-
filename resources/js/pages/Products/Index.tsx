@@ -1,6 +1,7 @@
 import { useState, Fragment } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { formatCurrency } from '@/lib/format-currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,10 +39,12 @@ import {
     Minus,
     ChevronLeft,
     ChevronRight,
+    Upload,
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { useDebouncedCallback } from 'use-debounce';
 import Swal from 'sweetalert2';
+import ProductImportModal from '@/components/ProductImportModal';
 
 interface Product {
     id: number;
@@ -115,13 +118,7 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
     const [sortField, setSortField] = useState(filters.sort_field || 'name');
     const [sortDirection, setSortDirection] = useState(filters.sort_direction || 'asc');
     const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-PE', {
-            style: 'currency',
-            currency: 'PEN',
-        }).format(amount);
-    };
+    const [showImportModal, setShowImportModal] = useState(false);
 
     // Búsqueda en tiempo real con debounce
     const debouncedSearch = useDebouncedCallback((value: string) => {
@@ -300,12 +297,18 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
                         <h1 className="text-3xl font-bold">Productos</h1>
                         <p className="text-muted-foreground">Gestiona el catálogo de productos</p>
                     </div>
-                    <Link href="/products/create">
-                        <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Nuevo Producto
+                    <div className="flex gap-2">
+                        <Button onClick={() => setShowImportModal(true)} variant="outline">
+                            <Upload className="mr-2 h-4 w-4" />
+                            Importar Excel
                         </Button>
-                    </Link>
+                        <Link href="/products/create">
+                            <Button>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Nuevo Producto
+                            </Button>
+                        </Link>
+                    </div>
                 </div>
 
                 {/* Barra de Búsqueda */}
@@ -547,7 +550,7 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
                                                                 {/* Info móvil condensada */}
                                                                 <div className="md:hidden mt-1 space-y-1">
                                                                     <p className="text-xs text-muted-foreground">
-                                                                        {product.category.name} - {product.brand.name}
+                                                                        {product.category.name}{product.brand ? ` - ${product.brand.name}` : ''}
                                                                     </p>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-semibold text-sm text-green-600">
@@ -576,7 +579,7 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
 
                                                     {/* Marca (oculto en móvil) */}
                                                     <TableCell className="hidden md:table-cell">
-                                                        <span className="text-sm">{product.brand.name}</span>
+                                                        <span className="text-sm">{product.brand?.name || 'Sin marca'}</span>
                                                     </TableCell>
 
                                                     {/* Precio Venta (oculto en móvil) */}
@@ -792,6 +795,12 @@ export default function ProductsIndex({ products, stats, categories, brands, fil
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Modal de Importación */}
+            <ProductImportModal
+                open={showImportModal}
+                onClose={() => setShowImportModal(false)}
+            />
         </AppLayout>
     );
 }

@@ -6,6 +6,7 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Edit, Package, Store } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
+import { formatCurrency } from '@/lib/format-currency';
 
 interface Product {
     id: number;
@@ -47,14 +48,6 @@ interface Props {
 export default function Show({ product }: Props) {
     const totalStock = product.inventory.reduce((total, inv) => total + inv.current_stock, 0);
     const isLowStock = totalStock <= product.min_stock;
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-CO', {
-            style: 'currency',
-            currency: 'COP',
-            minimumFractionDigits: 0,
-        }).format(amount);
-    };
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },

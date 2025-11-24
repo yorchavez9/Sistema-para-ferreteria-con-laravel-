@@ -1,6 +1,7 @@
 import { useState, Fragment } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
+import { formatCurrency } from '@/lib/format-currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -142,13 +143,6 @@ export default function SalesIndex({ sales, stats, branches, filters }: SalesInd
             preserveScroll: true,
         });
     }, 500);
-
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-PE', {
-            style: 'currency',
-            currency: 'PEN',
-        }).format(amount);
-    };
 
     const formatDate = (dateString: string) => {
         if (!dateString) return '-';

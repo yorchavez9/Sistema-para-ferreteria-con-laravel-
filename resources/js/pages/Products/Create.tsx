@@ -30,9 +30,15 @@ interface Brand {
     code: string;
 }
 
+interface Branch {
+    id: number;
+    name: string;
+}
+
 interface ProductsCreateProps {
     categories: Category[];
     brands: Brand[];
+    branches: Branch[];
 }
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -41,7 +47,7 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Crear Producto', href: '/products/create' },
 ];
 
-export default function ProductsCreate({ categories, brands }: ProductsCreateProps) {
+export default function ProductsCreate({ categories, brands, branches }: ProductsCreateProps) {
     const [formData, setFormData] = useState({
         name: '',
         code: '',
@@ -53,12 +59,16 @@ export default function ProductsCreate({ categories, brands }: ProductsCreatePro
         unit_of_measure: 'UND',
         purchase_price: '',
         sale_price: '',
+        wholesale_price: '',
+        retail_price: '',
         min_stock: '',
         max_stock: '',
         igv_percentage: '18.00',
         price_includes_igv: true,
         weight: '',
         dimensions: '',
+        initial_stock: '',
+        branch_id: '',
     });
 
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -313,12 +323,13 @@ export default function ProductsCreate({ categories, brands }: ProductsCreatePro
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="brand_id">Marca *</Label>
-                                    <Select value={formData.brand_id} onValueChange={(value) => handleChange('brand_id', value)}>
+                                    <Label htmlFor="brand_id">Marca</Label>
+                                    <Select value={formData.brand_id || 'none'} onValueChange={(value) => handleChange('brand_id', value === 'none' ? '' : value)}>
                                         <SelectTrigger className={errors.brand_id ? 'border-red-500' : ''}>
-                                            <SelectValue placeholder="Seleccionar marca" />
+                                            <SelectValue placeholder="Seleccionar marca (opcional)" />
                                         </SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="none">Sin marca</SelectItem>
                                             {brands.map((brand) => (
                                                 <SelectItem key={brand.id} value={brand.id.toString()}>
                                                     {brand.name}
@@ -348,38 +359,72 @@ export default function ProductsCreate({ categories, brands }: ProductsCreatePro
                                     </Select>
                                 </div>
 
+                                <div>
+                                    <Label htmlFor="purchase_price">Precio Compra *</Label>
+                                    <Input
+                                        id="purchase_price"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={formData.purchase_price}
+                                        onChange={(e) => handleChange('purchase_price', e.target.value)}
+                                        placeholder="0.00"
+                                        className={errors.purchase_price ? 'border-red-500' : ''}
+                                    />
+                                    {errors.purchase_price && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.purchase_price}</p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="sale_price">Precio Venta *</Label>
+                                    <Input
+                                        id="sale_price"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={formData.sale_price}
+                                        onChange={(e) => handleChange('sale_price', e.target.value)}
+                                        placeholder="0.00"
+                                        className={errors.sale_price ? 'border-red-500' : ''}
+                                    />
+                                    {errors.sale_price && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.sale_price}</p>
+                                    )}
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <Label htmlFor="purchase_price">Precio Compra *</Label>
+                                        <Label htmlFor="wholesale_price">Precio al por Mayor</Label>
                                         <Input
-                                            id="purchase_price"
+                                            id="wholesale_price"
                                             type="number"
                                             step="0.01"
                                             min="0"
-                                            value={formData.purchase_price}
-                                            onChange={(e) => handleChange('purchase_price', e.target.value)}
+                                            value={formData.wholesale_price}
+                                            onChange={(e) => handleChange('wholesale_price', e.target.value)}
                                             placeholder="0.00"
-                                            className={errors.purchase_price ? 'border-red-500' : ''}
+                                            className={errors.wholesale_price ? 'border-red-500' : ''}
                                         />
-                                        {errors.purchase_price && (
-                                            <p className="text-sm text-red-500 mt-1">{errors.purchase_price}</p>
+                                        {errors.wholesale_price && (
+                                            <p className="text-sm text-red-500 mt-1">{errors.wholesale_price}</p>
                                         )}
                                     </div>
 
                                     <div>
-                                        <Label htmlFor="sale_price">Precio Venta *</Label>
+                                        <Label htmlFor="retail_price">Precio al por Menor</Label>
                                         <Input
-                                            id="sale_price"
+                                            id="retail_price"
                                             type="number"
                                             step="0.01"
                                             min="0"
-                                            value={formData.sale_price}
-                                            onChange={(e) => handleChange('sale_price', e.target.value)}
+                                            value={formData.retail_price}
+                                            onChange={(e) => handleChange('retail_price', e.target.value)}
                                             placeholder="0.00"
-                                            className={errors.sale_price ? 'border-red-500' : ''}
+                                            className={errors.retail_price ? 'border-red-500' : ''}
                                         />
-                                        {errors.sale_price && (
-                                            <p className="text-sm text-red-500 mt-1">{errors.sale_price}</p>
+                                        {errors.retail_price && (
+                                            <p className="text-sm text-red-500 mt-1">{errors.retail_price}</p>
                                         )}
                                     </div>
                                 </div>
@@ -456,6 +501,49 @@ export default function ProductsCreate({ categories, brands }: ProductsCreatePro
                                             <p className="text-sm text-red-500 mt-1">{errors.max_stock}</p>
                                         )}
                                     </div>
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="branch_id">Sucursal para Stock Inicial</Label>
+                                    <Select value={formData.branch_id || 'none'} onValueChange={(value) => handleChange('branch_id', value === 'none' ? '' : value)}>
+                                        <SelectTrigger className={errors.branch_id ? 'border-red-500' : ''}>
+                                            <SelectValue placeholder="Seleccionar sucursal (opcional)" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">No agregar stock inicial</SelectItem>
+                                            {branches.map((branch) => (
+                                                <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                    {branch.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Selecciona una sucursal si deseas agregar stock inicial al producto
+                                    </p>
+                                    {errors.branch_id && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.branch_id}</p>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="initial_stock">Stock Inicial</Label>
+                                    <Input
+                                        id="initial_stock"
+                                        type="number"
+                                        min="0"
+                                        value={formData.initial_stock}
+                                        onChange={(e) => handleChange('initial_stock', e.target.value)}
+                                        placeholder="0"
+                                        disabled={!formData.branch_id}
+                                        className={errors.initial_stock ? 'border-red-500' : ''}
+                                    />
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Cantidad inicial de productos en el inventario
+                                    </p>
+                                    {errors.initial_stock && (
+                                        <p className="text-sm text-red-500 mt-1">{errors.initial_stock}</p>
+                                    )}
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">

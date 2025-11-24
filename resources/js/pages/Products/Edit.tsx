@@ -18,10 +18,12 @@ interface Product {
     code: string;
     barcode: string | null;
     category_id: number;
-    brand_id: number;
+    brand_id: number | null;
     unit_of_measure: string;
     purchase_price: number;
     sale_price: number;
+    wholesale_price: number;
+    retail_price: number;
     igv_percentage: number;
     price_includes_igv: boolean;
     min_stock: number;
@@ -53,10 +55,12 @@ export default function Edit({ product, categories, brands }: Props) {
         code: product.code,
         barcode: product.barcode || '',
         category_id: product.category_id.toString(),
-        brand_id: product.brand_id.toString(),
+        brand_id: product.brand_id ? product.brand_id.toString() : '',
         unit_of_measure: product.unit_of_measure,
         purchase_price: product.purchase_price.toString(),
         sale_price: product.sale_price.toString(),
+        wholesale_price: product.wholesale_price.toString(),
+        retail_price: product.retail_price.toString(),
         igv_percentage: product.igv_percentage.toString(),
         price_includes_igv: product.price_includes_igv,
         min_stock: product.min_stock.toString(),
@@ -231,15 +235,16 @@ export default function Edit({ product, categories, brands }: Props) {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="brand_id">Marca *</Label>
+                                    <Label htmlFor="brand_id">Marca</Label>
                                     <Select
-                                        value={data.brand_id.toString()}
-                                        onValueChange={(value) => handleChange('brand_id', value)}
+                                        value={data.brand_id || 'none'}
+                                        onValueChange={(value) => handleChange('brand_id', value === 'none' ? '' : value)}
                                     >
                                         <SelectTrigger className={errors.brand_id ? 'border-red-500' : ''}>
-                                            <SelectValue placeholder="Selecciona una marca" />
+                                            <SelectValue placeholder="Selecciona una marca (opcional)" />
                                         </SelectTrigger>
                                         <SelectContent>
+                                            <SelectItem value="none">Sin marca</SelectItem>
                                             {brands.map((brand) => (
                                                 <SelectItem key={brand.id} value={brand.id.toString()}>
                                                     {brand.name}
@@ -296,6 +301,40 @@ export default function Edit({ product, categories, brands }: Props) {
                                     {errors.sale_price && (
                                         <p className="text-sm text-red-500">{errors.sale_price}</p>
                                     )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="wholesale_price">Precio al por Mayor</Label>
+                                        <Input
+                                            id="wholesale_price"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={data.wholesale_price}
+                                            onChange={(e) => handleChange('wholesale_price', e.target.value)}
+                                            className={errors.wholesale_price ? 'border-red-500' : ''}
+                                        />
+                                        {errors.wholesale_price && (
+                                            <p className="text-sm text-red-500">{errors.wholesale_price}</p>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="retail_price">Precio al por Menor</Label>
+                                        <Input
+                                            id="retail_price"
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            value={data.retail_price}
+                                            onChange={(e) => handleChange('retail_price', e.target.value)}
+                                            className={errors.retail_price ? 'border-red-500' : ''}
+                                        />
+                                        {errors.retail_price && (
+                                            <p className="text-sm text-red-500">{errors.retail_price}</p>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-2">

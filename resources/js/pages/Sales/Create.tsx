@@ -21,9 +21,15 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
-import { ArrowLeft, Plus, Trash2, ShoppingCart, Package, User, List, DollarSign, Search, UserPlus, Loader2, CheckCircle, Minus, Printer, XCircle, AlertTriangle, FileText, Receipt, UserCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, ShoppingCart, ShoppingBag, Package, User, List, DollarSign, Search, UserPlus, Loader2, CheckCircle, Minus, Printer, XCircle, AlertTriangle, FileText, Receipt, UserCircle, Sparkles } from 'lucide-react';
+import { HiShoppingCart } from 'react-icons/hi2';
+import { BsCartCheckFill, BsCartPlusFill } from 'react-icons/bs';
+import { FaShoppingBasket, FaShoppingBag } from 'react-icons/fa';
+import { IoCart, IoCartSharp } from 'react-icons/io5';
+import { RiShoppingCart2Fill, RiShoppingBasket2Fill } from 'react-icons/ri';
 import { type BreadcrumbItem } from '@/types';
 import { showSuccess, showError } from '@/lib/sweet-alert';
+import { formatCurrency } from '@/lib/format-currency';
 import ProductSelectorModal from '@/components/ProductSelectorModal';
 import axios from 'axios';
 import confetti from 'canvas-confetti';
@@ -477,14 +483,6 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
         return '-';
     }, [formData.document_type, formData.document_series_id, availableSeries]);
 
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat('es-PE', {
-            style: 'currency',
-            currency: 'PEN',
-            minimumFractionDigits: 2,
-        }).format(amount);
-    };
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         setErrors({});
@@ -901,8 +899,9 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                         </Button>
                     </Link>
                     <div className="flex items-center gap-3">
-                        <div className="p-3 bg-primary/10 rounded-lg">
-                            <ShoppingCart className="h-8 w-8 text-primary" />
+                        <div className="relative p-4 bg-gradient-to-br from-blue-500/20 via-purple-500/10 to-primary/5 rounded-2xl shadow-lg border border-blue-200/50">
+                            <RiShoppingCart2Fill className="h-9 w-9 text-blue-600" />
+                            <div className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full animate-pulse border-2 border-white"></div>
                         </div>
                         <div>
                             <h1 className="text-3xl font-bold">Nueva Venta</h1>
@@ -919,7 +918,7 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <ShoppingCart className="h-5 w-5" />
+                                <Receipt className="h-5 w-5" />
                                 Información del Comprobante
                             </CardTitle>
                         </CardHeader>

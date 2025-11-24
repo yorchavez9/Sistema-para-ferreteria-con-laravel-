@@ -7,6 +7,9 @@ use App\Models\Category;
 use App\Models\Brand;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use App\Imports\ProductsImport;
+use App\Exports\ProductsTemplateExport;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ProductController extends Controller
 {
@@ -97,10 +100,12 @@ class ProductController extends Controller
     {
         $categories = Category::active()->get();
         $brands = Brand::active()->get();
+        $branches = \App\Models\Branch::where('is_active', true)->get();
 
         return Inertia::render('Products/Create', [
             'categories' => $categories,
             'brands' => $brands,
+            'branches' => $branches,
         ]);
     }
 
@@ -114,19 +119,23 @@ class ProductController extends Controller
             'code' => 'required|string|max:50|unique:products',
             'barcode' => 'nullable|string|max:50|unique:products',
             'category_id' => 'required|exists:categories,id',
-            'brand_id' => 'required|exists:brands,id',
+            'brand_id' => 'nullable|exists:brands,id',
             'unit_of_measure' => 'required|string|max:10',
             'purchase_price' => 'required|numeric|min:0',
             'sale_price' => 'required|numeric|min:0',
+            'wholesale_price' => 'nullable|numeric|min:0',
+            'retail_price' => 'nullable|numeric|min:0',
             'min_stock' => 'required|integer|min:0',
             'max_stock' => 'required|integer|min:0',
             'igv_percentage' => 'required|numeric|min:0|max:100',
             'description' => 'nullable|string',
             'technical_specifications' => 'nullable|string',
             'image' => 'nullable|image|mimes:jpeg,jpg,png,webp|max:2048',
+            'branch_id' => 'nullable|exists:branches,id',
+            'initial_stock' => 'nullable|integer|min:0',
         ]);
 
-        $data = $request->except('image');
+        $data = $request->except(['image', 'branch_id', 'initial_stock']);
 
         // Convertir valores booleanos
         if (isset($data['price_includes_igv'])) {
@@ -141,7 +150,21 @@ class ProductController extends Controller
             $data['image'] = $imagePath;
         }
 
-        Product::create($data);
+        $product = Product::create($data);
+
+        // Crear inventario inicial si se proporcionó sucursal y cantidad
+        if ($request->filled('branch_id') && $request->filled('initial_stock')) {
+            \App\Models\Inventory::create([
+                'product_id' => $product->id,
+                'branch_id' => $request->branch_id,
+                'current_stock' => $request->initial_stock,
+                'min_stock' => $request->min_stock,
+                'max_stock' => $request->max_stock,
+                'cost_price' => $request->purchase_price,
+                'sale_price' => $request->sale_price,
+                'last_movement_date' => now(),
+            ]);
+        }
 
         return redirect()->route('products.index')
             ->with('success', 'Producto creado exitosamente.');
@@ -184,10 +207,12 @@ class ProductController extends Controller
             'code' => 'required|string|max:50|unique:products,code,' . $product->id,
             'barcode' => 'nullable|string|max:50|unique:products,barcode,' . $product->id,
             'category_id' => 'required|exists:categories,id',
-            'brand_id' => 'required|exists:brands,id',
+            'brand_id' => 'nullable|exists:brands,id',
             'unit_of_measure' => 'required|string|max:10',
             'purchase_price' => 'required|numeric|min:0',
             'sale_price' => 'required|numeric|min:0',
+            'wholesale_price' => 'nullable|numeric|min:0',
+            'retail_price' => 'nullable|numeric|min:0',
             'min_stock' => 'required|integer|min:0',
             'max_stock' => 'required|integer|min:0',
             'igv_percentage' => 'required|numeric|min:0|max:100',
@@ -301,5 +326,50 @@ class ProductController extends Controller
         return response()->json([
             'products' => $products
         ]);
+    }
+
+    /**
+     * Import products from Excel file
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls|max:10240', // Max 10MB
+        ]);
+
+        try {
+            $import = new ProductsImport();
+            Excel::import($import, $request->file('file'));
+
+            $response = [
+                'success' => true,
+                'message' => 'Importación completada',
+                'stats' => [
+                    'imported' => $import->getImported(),
+                    'updated' => $import->getUpdated(),
+                    'skipped' => $import->getSkipped(),
+                    'errors' => $import->getErrors(),
+                ],
+            ];
+
+            if ($import->hasErrors()) {
+                $response['message'] = 'Importación completada con algunos errores';
+            }
+
+            return response()->json($response);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error durante la importación: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Download Excel template for importing products
+     */
+    public function downloadTemplate()
+    {
+        return Excel::download(new ProductsTemplateExport(), 'plantilla_productos.xlsx');
     }
 }

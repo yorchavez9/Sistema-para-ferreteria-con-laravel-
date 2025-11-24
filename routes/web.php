@@ -23,7 +23,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('api/suppliers/search', [\App\Http\Controllers\SupplierController::class, 'searchApi'])->name('api.suppliers.search');
     Route::get('api/suppliers/external-search/{document}', [\App\Http\Controllers\SupplierController::class, 'externalSearch'])->name('api.suppliers.external-search');
 
-    // Productos
+    // Productos - Rutas personalizadas ANTES del resource
+    Route::post('products/import', [ProductController::class, 'import'])->name('products.import');
+    Route::get('products/template', [ProductController::class, 'downloadTemplate'])->name('products.template');
+
+    // Productos - Resource routes
     Route::resource('products', ProductController::class)->middleware([
         'permission:product-list|product-create|product-edit|product-delete'
     ]);
