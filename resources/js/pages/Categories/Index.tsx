@@ -570,7 +570,7 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={8} className="text-center py-8">
-                                            <FolderTree className="h-10 w-10 mx-auto text-muted-foreground opacity-50" />
+                                           
                                             <p className="mt-2 text-muted-foreground">No se encontraron categorías</p>
                                         </TableCell>
                                     </TableRow>
