@@ -11,6 +11,10 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 
 class PurchaseOrderController extends Controller
 {
@@ -313,12 +317,26 @@ class PurchaseOrderController extends Controller
         $config = $this->getPdfConfig($size);
 
         // Determinar qué vista usar según el tamaño
-        $view = in_array($size, ['80mm', '50mm']) ? 'pdf.purchase-order-ticket' : 'pdf.purchase-order-a4';
+        $view = in_array($size, ['80mm', '58mm', '50mm']) ? 'pdf.purchase-order-ticket' : 'pdf.purchase-order-a4';
+
+        // Generar código QR
+        $qrData = "ORDEN COMPRA: {$purchaseOrder->order_number}\n";
+        $qrData .= "FECHA: {$purchaseOrder->order_date}\n";
+        $qrData .= "PROVEEDOR: {$purchaseOrder->supplier->business_name}\n";
+        $qrData .= "TOTAL: {$settings->currency_symbol} " . number_format($purchaseOrder->total, 2);
+
+        $renderer = new ImageRenderer(
+            new RendererStyle(400),
+            new SvgImageBackEnd()
+        );
+        $writer = new Writer($renderer);
+        $qrCode = base64_encode($writer->writeString($qrData));
 
         $pdf = Pdf::loadView($view, [
             'order' => $purchaseOrder,
             'config' => $config,
             'settings' => $settings,
+            'qrCode' => $qrCode,
         ])
         ->setPaper($config['paper'], $config['orientation']);
 
@@ -344,19 +362,90 @@ class PurchaseOrderController extends Controller
                 ];
             case '80mm':
                 return [
-                    'paper' => [0, 0, 226.77, 566.93], // 80mm ancho
+                    'paper' => [0, 0, 226.77, 566.93],
                     'orientation' => 'portrait',
-                    'width' => '70mm', // Ancho útil (dejando 5mm de margen a cada lado)
+                    'width' => '72mm',
                     'height' => 'auto',
-                    'fontSize' => '13px', // Letras más grandes y legibles
+                    'padding' => '4mm',
+                    // Logo
+                    'logoWidth' => '40mm',
+                    'logoHeight' => '15mm',
+                    // QR Code
+                    'qrSize' => '30mm',
+                    // Tamaños de fuente optimizados para 80mm
+                    'fontSize' => '9px',
+                    'titleSize' => '12px',
+                    'infoSize' => '8px',
+                    'docTypeSize' => '11px',
+                    'docNumberSize' => '10px',
+                    'sectionSize' => '9px',
+                    'textSize' => '8px',
+                    'tableHeaderSize' => '8px',
+                    'productSize' => '8px',
+                    'totalSize' => '9px',
+                    'totalFinalSize' => '11px',
+                    'statusSize' => '9px',
+                    'footerSize' => '7px',
+                    'thanksSize' => '9px',
+                    'notesSize' => '6px',
+                ];
+            case '58mm':
+                return [
+                    'paper' => [0, 0, 164.41, 566.93],
+                    'orientation' => 'portrait',
+                    'width' => '52mm',
+                    'height' => 'auto',
+                    'padding' => '3mm',
+                    // Logo
+                    'logoWidth' => '30mm',
+                    'logoHeight' => '12mm',
+                    // QR Code
+                    'qrSize' => '25mm',
+                    // Tamaños de fuente optimizados para 58mm
+                    'fontSize' => '7px',
+                    'titleSize' => '9px',
+                    'infoSize' => '6px',
+                    'docTypeSize' => '8px',
+                    'docNumberSize' => '8px',
+                    'sectionSize' => '7px',
+                    'textSize' => '6px',
+                    'tableHeaderSize' => '6px',
+                    'productSize' => '6px',
+                    'totalSize' => '7px',
+                    'totalFinalSize' => '9px',
+                    'statusSize' => '7px',
+                    'footerSize' => '5px',
+                    'thanksSize' => '7px',
+                    'notesSize' => '5px',
                 ];
             case '50mm':
                 return [
-                    'paper' => [0, 0, 141.73, 566.93], // 50mm ancho
+                    'paper' => [0, 0, 141.73, 566.93],
                     'orientation' => 'portrait',
-                    'width' => '46mm', // Más margen para evitar desbordamiento
+                    'width' => '46mm',
                     'height' => 'auto',
-                    'fontSize' => '9px', // Más grande para mejor legibilidad
+                    'padding' => '2mm',
+                    // Logo
+                    'logoWidth' => '25mm',
+                    'logoHeight' => '10mm',
+                    // QR Code
+                    'qrSize' => '20mm',
+                    // Tamaños de fuente optimizados para 50mm
+                    'fontSize' => '6px',
+                    'titleSize' => '8px',
+                    'infoSize' => '5px',
+                    'docTypeSize' => '7px',
+                    'docNumberSize' => '7px',
+                    'sectionSize' => '6px',
+                    'textSize' => '5px',
+                    'tableHeaderSize' => '5px',
+                    'productSize' => '5px',
+                    'totalSize' => '6px',
+                    'totalFinalSize' => '8px',
+                    'statusSize' => '6px',
+                    'footerSize' => '4px',
+                    'thanksSize' => '6px',
+                    'notesSize' => '4px',
                 ];
             default: // a4
                 return [

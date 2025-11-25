@@ -23,7 +23,6 @@ interface Product {
     purchase_price: number;
     sale_price: number;
     wholesale_price: number;
-    retail_price: number;
     igv_percentage: number;
     price_includes_igv: boolean;
     min_stock: number;
@@ -60,9 +59,8 @@ export default function Edit({ product, categories, brands }: Props) {
         purchase_price: product.purchase_price.toString(),
         sale_price: product.sale_price.toString(),
         wholesale_price: product.wholesale_price.toString(),
-        retail_price: product.retail_price.toString(),
-        igv_percentage: product.igv_percentage.toString(),
-        price_includes_igv: product.price_includes_igv,
+        igv_percentage: Math.round(product.igv_percentage).toString(),
+        price_includes_igv: product.price_includes_igv ? 'true' : 'false',
         min_stock: product.min_stock.toString(),
         max_stock: product.max_stock.toString(),
         description: product.description || '',
@@ -303,54 +301,39 @@ export default function Edit({ product, categories, brands }: Props) {
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="wholesale_price">Precio al por Mayor</Label>
-                                        <Input
-                                            id="wholesale_price"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.wholesale_price}
-                                            onChange={(e) => handleChange('wholesale_price', e.target.value)}
-                                            className={errors.wholesale_price ? 'border-red-500' : ''}
-                                        />
-                                        {errors.wholesale_price && (
-                                            <p className="text-sm text-red-500">{errors.wholesale_price}</p>
-                                        )}
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="retail_price">Precio al por Menor</Label>
-                                        <Input
-                                            id="retail_price"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.retail_price}
-                                            onChange={(e) => handleChange('retail_price', e.target.value)}
-                                            className={errors.retail_price ? 'border-red-500' : ''}
-                                        />
-                                        {errors.retail_price && (
-                                            <p className="text-sm text-red-500">{errors.retail_price}</p>
-                                        )}
-                                    </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="wholesale_price">Precio al por Mayor</Label>
+                                    <Input
+                                        id="wholesale_price"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={data.wholesale_price}
+                                        onChange={(e) => handleChange('wholesale_price', e.target.value)}
+                                        className={errors.wholesale_price ? 'border-red-500' : ''}
+                                    />
+                                    {errors.wholesale_price && (
+                                        <p className="text-sm text-red-500">{errors.wholesale_price}</p>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">
                                     <Label htmlFor="igv_percentage">Porcentaje de IGV (%) *</Label>
-                                    <Input
-                                        id="igv_percentage"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        max="100"
+                                    <Select
                                         value={data.igv_percentage}
-                                        onChange={(e) => handleChange('igv_percentage', e.target.value)}
-                                        className={errors.igv_percentage ? 'border-red-500' : ''}
-                                    />
+                                        onValueChange={(value) => handleChange('igv_percentage', value)}
+                                    >
+                                        <SelectTrigger className={errors.igv_percentage ? 'border-red-500' : ''}>
+                                            <SelectValue placeholder="Seleccione porcentaje de IGV" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="0">0% (Sin IGV)</SelectItem>
+                                            <SelectItem value="10">10%</SelectItem>
+                                            <SelectItem value="18">18% (Estándar)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                     <p className="text-xs text-muted-foreground">
-                                        Ingrese 0 para productos sin IGV, 18 para IGV estándar, o el porcentaje que corresponda
+                                        Seleccione el porcentaje de IGV que corresponda al producto
                                     </p>
                                     {errors.igv_percentage && (
                                         <p className="text-sm text-red-500">{errors.igv_percentage}</p>
@@ -360,8 +343,8 @@ export default function Edit({ product, categories, brands }: Props) {
                                 <div className="flex items-center space-x-2 border rounded-lg p-4 bg-muted/50">
                                     <Checkbox
                                         id="price_includes_igv"
-                                        checked={data.price_includes_igv}
-                                        onCheckedChange={(checked) => handleChange('price_includes_igv', !!checked)}
+                                        checked={data.price_includes_igv === 'true'}
+                                        onCheckedChange={(checked) => handleChange('price_includes_igv', checked ? 'true' : 'false')}
                                     />
                                     <div className="grid gap-1.5 leading-none">
                                         <Label

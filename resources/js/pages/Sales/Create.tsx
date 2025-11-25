@@ -1178,7 +1178,7 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                                         onClick={() => setShowPriceCheckModal(true)}
                                         className="bg-green-50 hover:bg-green-100 border-green-200 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:border-green-800 dark:text-green-400"
                                     >
-                                        <DollarSign className="h-4 w-4 mr-2" />
+                                        <span className="font-bold mr-1">S/</span>
                                         Consultar Precios
                                     </Button>
                                     <Button
@@ -1588,7 +1588,7 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <DollarSign className="h-5 w-5" />
+                                    <span className="font-bold mr-1">S/</span>
                                     Resumen de Totales
                                 </CardTitle>
                             </CardHeader>

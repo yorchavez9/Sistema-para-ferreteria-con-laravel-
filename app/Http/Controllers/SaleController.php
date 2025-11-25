@@ -15,6 +15,10 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use App\Models\Setting;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\Image\SvgImageBackEnd;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 
 class SaleController extends Controller
 {
@@ -519,18 +523,32 @@ class SaleController extends Controller
         // Obtener configuraciones de la empresa
         $settings = Setting::get();
 
-        $size = $request->query('size', 'a4'); // a4, a5, 80mm, 50mm
+        $size = $request->query('size', 'a4'); // a4, a5, 80mm, 58mm, 50mm
 
         // Configuración según el tamaño
         $config = $this->getPdfConfig($size);
 
         // Determinar qué vista usar según el tamaño
-        $view = in_array($size, ['80mm', '50mm']) ? 'pdf.sale-ticket' : 'pdf.sale-a4';
+        $view = in_array($size, ['80mm', '58mm', '50mm']) ? 'pdf.sale-ticket' : 'pdf.sale-a4';
+
+        // Generar código QR
+        $qrData = "VENTA: {$sale->sale_number}\n";
+        $qrData .= "FECHA: {$sale->sale_date}\n";
+        $qrData .= "CLIENTE: {$sale->customer->name}\n";
+        $qrData .= "TOTAL: {$settings->currency_symbol} " . number_format($sale->total, 2);
+
+        $renderer = new ImageRenderer(
+            new RendererStyle(400),
+            new SvgImageBackEnd()
+        );
+        $writer = new Writer($renderer);
+        $qrCode = base64_encode($writer->writeString($qrData));
 
         $pdf = PDF::loadView($view, [
             'sale' => $sale,
             'config' => $config,
             'settings' => $settings,
+            'qrCode' => $qrCode,
         ])
         ->setPaper($config['paper'], $config['orientation']);
 
@@ -560,19 +578,90 @@ class SaleController extends Controller
                 ];
             case '80mm':
                 return [
-                    'paper' => [0, 0, 226.77, 566.93], // 80mm ancho
+                    'paper' => [0, 0, 226.77, 566.93], // 80mm ancho (en puntos)
                     'orientation' => 'portrait',
-                    'width' => '70mm', // Ancho útil (dejando 5mm de margen a cada lado)
+                    'width' => '72mm', // Ancho útil (80mm - 8mm márgenes)
                     'height' => 'auto',
-                    'fontSize' => '13px', // Letras más grandes y legibles
+                    'padding' => '4mm',
+                    // Logo
+                    'logoWidth' => '40mm',
+                    'logoHeight' => '15mm',
+                    // QR Code
+                    'qrSize' => '30mm',
+                    // Tamaños de fuente optimizados para 80mm
+                    'fontSize' => '9px',
+                    'titleSize' => '12px',
+                    'infoSize' => '8px',
+                    'docTypeSize' => '11px',
+                    'docNumberSize' => '10px',
+                    'sectionSize' => '9px',
+                    'textSize' => '8px',
+                    'tableHeaderSize' => '8px',
+                    'productSize' => '8px',
+                    'totalSize' => '9px',
+                    'totalFinalSize' => '11px',
+                    'statusSize' => '9px',
+                    'footerSize' => '7px',
+                    'thanksSize' => '9px',
+                    'notesSize' => '6px',
+                ];
+            case '58mm':
+                return [
+                    'paper' => [0, 0, 164.41, 566.93], // 58mm ancho (en puntos)
+                    'orientation' => 'portrait',
+                    'width' => '52mm', // Ancho útil (58mm - 6mm márgenes)
+                    'height' => 'auto',
+                    'padding' => '3mm',
+                    // Logo
+                    'logoWidth' => '30mm',
+                    'logoHeight' => '12mm',
+                    // QR Code
+                    'qrSize' => '25mm',
+                    // Tamaños de fuente optimizados para 58mm (más pequeños)
+                    'fontSize' => '7px',
+                    'titleSize' => '9px',
+                    'infoSize' => '6px',
+                    'docTypeSize' => '8px',
+                    'docNumberSize' => '8px',
+                    'sectionSize' => '7px',
+                    'textSize' => '6px',
+                    'tableHeaderSize' => '6px',
+                    'productSize' => '6px',
+                    'totalSize' => '7px',
+                    'totalFinalSize' => '9px',
+                    'statusSize' => '7px',
+                    'footerSize' => '5px',
+                    'thanksSize' => '7px',
+                    'notesSize' => '5px',
                 ];
             case '50mm':
                 return [
-                    'paper' => [0, 0, 141.73, 566.93], // 50mm ancho
+                    'paper' => [0, 0, 141.73, 566.93], // 50mm ancho (en puntos)
                     'orientation' => 'portrait',
-                    'width' => '46mm', // Más margen para evitar desbordamiento
+                    'width' => '46mm', // Ancho útil
                     'height' => 'auto',
-                    'fontSize' => '9px', // Más grande para mejor legibilidad
+                    'padding' => '2mm',
+                    // Logo
+                    'logoWidth' => '25mm',
+                    'logoHeight' => '10mm',
+                    // QR Code
+                    'qrSize' => '20mm',
+                    // Tamaños de fuente optimizados para 50mm (muy pequeños)
+                    'fontSize' => '6px',
+                    'titleSize' => '8px',
+                    'infoSize' => '5px',
+                    'docTypeSize' => '7px',
+                    'docNumberSize' => '7px',
+                    'sectionSize' => '6px',
+                    'textSize' => '5px',
+                    'tableHeaderSize' => '5px',
+                    'productSize' => '5px',
+                    'totalSize' => '6px',
+                    'totalFinalSize' => '8px',
+                    'statusSize' => '6px',
+                    'footerSize' => '4px',
+                    'thanksSize' => '6px',
+                    'notesSize' => '4px',
                 ];
             default: // a4
                 return [

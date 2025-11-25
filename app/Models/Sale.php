@@ -36,7 +36,7 @@ class Sale extends Model
     ];
 
     protected $casts = [
-        'sale_date' => 'date',
+        'sale_date' => 'datetime',
         'subtotal' => 'decimal:2',
         'tax' => 'decimal:2',
         'discount' => 'decimal:2',
