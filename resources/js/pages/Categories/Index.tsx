@@ -26,7 +26,6 @@ import {
     Eye,
     Pencil,
     Trash2,
-    FolderTree,
     Search,
     Filter,
     ArrowUpDown,
@@ -35,8 +34,6 @@ import {
     Minus,
     ChevronLeft,
     ChevronRight,
-    Folder,
-    FolderOpen,
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
 import { useDebouncedCallback } from 'use-debounce';
@@ -48,20 +45,12 @@ interface Category {
     code: string;
     description: string | null;
     is_active: boolean;
-    parent_id: number | null;
-    parent?: {
-        id: number;
-        name: string;
-    };
-    children_count: number;
     products_count: number;
 }
 
 interface Stats {
     total_categories: number;
     active_categories: number;
-    main_categories: number;
-    subcategories: number;
 }
 
 interface CategoriesIndexProps {
@@ -79,7 +68,6 @@ interface CategoriesIndexProps {
     filters: {
         search?: string;
         is_active?: string;
-        type?: string;
         sort_field?: string;
         sort_direction?: string;
         per_page?: number;
@@ -96,7 +84,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
     const [showFilters, setShowFilters] = useState(false);
     const [filterData, setFilterData] = useState({
         is_active: filters.is_active || '',
-        type: filters.type || '',
         per_page: filters.per_page?.toString() || '15',
     });
     const [sortField, setSortField] = useState(filters.sort_field || 'name');
@@ -113,7 +100,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
         };
 
         if (filterData.is_active) params.is_active = filterData.is_active;
-        if (filterData.type) params.type = filterData.type;
 
         router.get('/categories', params, {
             preserveState: true,
@@ -135,7 +121,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
         };
 
         if (filterData.is_active) params.is_active = filterData.is_active;
-        if (filterData.type) params.type = filterData.type;
 
         router.get('/categories', params, {
             preserveState: true,
@@ -146,7 +131,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
     const clearFilters = () => {
         const clearedFilters = {
             is_active: '',
-            type: '',
             per_page: '15',
         };
         setFilterData(clearedFilters);
@@ -175,7 +159,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
         };
 
         if (filterData.is_active) params.is_active = filterData.is_active;
-        if (filterData.type) params.type = filterData.type;
 
         router.get('/categories', params, {
             preserveState: true,
@@ -194,7 +177,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
         };
 
         if (filterData.is_active) params.is_active = filterData.is_active;
-        if (filterData.type) params.type = filterData.type;
 
         router.get('/categories', params, {
             preserveState: true,
@@ -212,7 +194,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
         };
 
         if (filterData.is_active) params.is_active = filterData.is_active;
-        if (filterData.type) params.type = filterData.type;
 
         router.get('/categories', params, {
             preserveState: true,
@@ -231,13 +212,12 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
     };
 
     const handleDelete = (category: Category) => {
-        const hasChildren = category.children_count > 0;
         const hasProducts = category.products_count > 0;
 
-        if (hasChildren || hasProducts) {
+        if (hasProducts) {
             Swal.fire({
                 title: 'No se puede eliminar',
-                text: `Esta categoría tiene ${hasChildren ? 'subcategorías' : ''} ${hasChildren && hasProducts ? 'y ' : ''} ${hasProducts ? 'productos asociados' : ''}.`,
+                text: `Esta categoría tiene productos asociados.`,
                 icon: 'error',
                 confirmButtonText: 'Entendido',
             });
@@ -322,25 +302,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                         <CardContent>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div>
-                                    <Label htmlFor="type">Tipo</Label>
-                                    <Select
-                                        value={filterData.type || 'all'}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, type: value === 'all' ? '' : value })
-                                        }
-                                    >
-                                        <SelectTrigger id="type">
-                                            <SelectValue placeholder="Todas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="all">Todas</SelectItem>
-                                            <SelectItem value="main">Principales</SelectItem>
-                                            <SelectItem value="sub">Subcategorías</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div>
                                     <Label htmlFor="status">Estado</Label>
                                     <Select
                                         value={filterData.is_active || 'all'}
@@ -417,12 +378,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                                             <SortIcon field="name" />
                                         </div>
                                     </TableHead>
-                                    <TableHead className="hidden md:table-cell">
-                                        Categoría Padre
-                                    </TableHead>
-                                    <TableHead className="hidden md:table-cell text-center">
-                                        Subcategorías
-                                    </TableHead>
                                     <TableHead className="hidden md:table-cell text-center">
                                         Productos
                                     </TableHead>
@@ -468,9 +423,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                                                     <TableCell>
                                                         <div>
                                                             <div className="flex items-center gap-2">
-                                                                {category.parent_id && (
-                                                                    <FolderTree className="h-4 w-4 text-muted-foreground" />
-                                                                )}
                                                                 <p className="text-sm font-medium">{category.name}</p>
                                                             </div>
                                                             {category.description && (
@@ -482,7 +434,7 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                                                             <div className="md:hidden mt-1 space-y-1">
                                                                 <div className="flex items-center gap-2 flex-wrap">
                                                                     <span className="text-xs text-muted-foreground">
-                                                                        {category.children_count} sub · {category.products_count} prod
+                                                                        {category.products_count} prod
                                                                     </span>
                                                                     <Badge
                                                                         variant="outline"
@@ -497,24 +449,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </TableCell>
-
-                                                    {/* Categoría Padre (oculto en móvil) */}
-                                                    <TableCell className="hidden md:table-cell">
-                                                        {category.parent ? (
-                                                            <Badge variant="secondary">
-                                                                {category.parent.name}
-                                                            </Badge>
-                                                        ) : (
-                                                            <span className="text-muted-foreground text-sm">—</span>
-                                                        )}
-                                                    </TableCell>
-
-                                                    {/* Subcategorías (oculto en móvil) */}
-                                                    <TableCell className="hidden md:table-cell text-center">
-                                                        <span className="font-mono font-semibold">
-                                                            {category.children_count}
-                                                        </span>
                                                     </TableCell>
 
                                                     {/* Productos (oculto en móvil) */}
@@ -571,15 +505,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                                                                 <div className="grid grid-cols-2 gap-3">
                                                                     <div>
                                                                         <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
-                                                                            Categoría Padre
-                                                                        </p>
-                                                                        <p className="font-medium text-sm">
-                                                                            {category.parent ? category.parent.name : 'Principal'}
-                                                                        </p>
-                                                                    </div>
-
-                                                                    <div>
-                                                                        <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
                                                                             Orden
                                                                         </p>
                                                                         <p className="font-medium text-sm">
@@ -589,15 +514,6 @@ export default function CategoriesIndex({ categories, stats, filters }: Categori
                                                                 </div>
 
                                                                 <div className="grid grid-cols-2 gap-3">
-                                                                    <div>
-                                                                        <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
-                                                                            Subcategorías
-                                                                        </p>
-                                                                        <p className="font-bold text-base">
-                                                                            {category.children_count}
-                                                                        </p>
-                                                                    </div>
-
                                                                     <div>
                                                                         <p className="text-xs text-muted-foreground uppercase font-medium mb-1">
                                                                             Productos

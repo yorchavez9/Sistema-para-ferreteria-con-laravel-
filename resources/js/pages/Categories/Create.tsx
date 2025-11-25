@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
@@ -10,32 +9,18 @@ import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { showSuccess, showError } from '@/lib/sweet-alert';
 
-interface Category {
-    id: number;
-    name: string;
-}
-
-interface Props {
-    parentCategories: Category[];
-}
-
-export default function Create({ parentCategories }: Props) {
+export default function Create() {
     const { data, setData, post, errors, processing } = useForm({
         name: '',
         code: '',
         description: '',
-        parent_id: 'none',
         is_active: true,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const formData = {
-            ...data,
-            parent_id: data.parent_id === 'none' ? null : data.parent_id
-        };
         post('/categories', {
-            data: formData,
+            data,
             onSuccess: () => {
                 showSuccess('¡Categoría creada!', 'La categoría ha sido creada exitosamente.');
             },
@@ -103,32 +88,6 @@ export default function Create({ parentCategories }: Props) {
                                     {errors.code && (
                                         <p className="text-sm text-red-500">{errors.code}</p>
                                     )}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="parent_id">Categoría Padre</Label>
-                                    <Select
-                                        value={data.parent_id}
-                                        onValueChange={(value) => setData('parent_id', value)}
-                                    >
-                                        <SelectTrigger className={errors.parent_id ? 'border-red-500' : ''}>
-                                            <SelectValue placeholder="Selecciona una categoría padre (opcional)" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">Sin categoría padre</SelectItem>
-                                            {parentCategories.map((category) => (
-                                                <SelectItem key={category.id} value={category.id.toString()}>
-                                                    {category.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {errors.parent_id && (
-                                        <p className="text-sm text-red-500">{errors.parent_id}</p>
-                                    )}
-                                    <p className="text-sm text-muted-foreground">
-                                        Opcional: Selecciona una categoría principal para crear una subcategoría
-                                    </p>
                                 </div>
                             </div>
 

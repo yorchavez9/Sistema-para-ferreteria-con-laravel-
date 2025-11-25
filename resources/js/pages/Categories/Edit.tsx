@@ -2,7 +2,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Head, Link, useForm } from '@inertiajs/react';
@@ -16,37 +15,25 @@ interface Category {
     name: string;
     code: string;
     description: string | null;
-    parent_id: number | null;
     is_active: boolean;
-}
-
-interface ParentCategory {
-    id: number;
-    name: string;
 }
 
 interface Props {
     category: Category;
-    parentCategories: ParentCategory[];
 }
 
-export default function Edit({ category, parentCategories }: Props) {
+export default function Edit({ category }: Props) {
     const { data, setData, put, errors, processing } = useForm({
         name: category.name,
         code: category.code,
         description: category.description || '',
-        parent_id: category.parent_id ? category.parent_id.toString() : 'none',
         is_active: category.is_active,
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const formData = {
-            ...data,
-            parent_id: data.parent_id === 'none' ? null : data.parent_id
-        };
         put(`/categories/${category.id}`, {
-            data: formData,
+            data,
             onSuccess: () => {
                 showSuccess('¡Categoría actualizada!', 'La categoría ha sido actualizada exitosamente.');
             },
@@ -55,10 +42,6 @@ export default function Edit({ category, parentCategories }: Props) {
             }
         });
     };
-
-    const availableParentCategories = parentCategories.filter(
-        parent => parent.id !== category.id
-    );
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Dashboard', href: '/dashboard' },
@@ -116,29 +99,6 @@ export default function Edit({ category, parentCategories }: Props) {
                                     />
                                     {errors.code && (
                                         <p className="text-sm text-red-500">{errors.code}</p>
-                                    )}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="parent_id">Categoría Padre</Label>
-                                    <Select
-                                        value={data.parent_id}
-                                        onValueChange={(value) => setData('parent_id', value)}
-                                    >
-                                        <SelectTrigger className={errors.parent_id ? 'border-red-500' : ''}>
-                                            <SelectValue placeholder="Selecciona una categoría padre (opcional)" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">Sin categoría padre</SelectItem>
-                                            {availableParentCategories.map((parentCategory) => (
-                                                <SelectItem key={parentCategory.id} value={parentCategory.id.toString()}>
-                                                    {parentCategory.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {errors.parent_id && (
-                                        <p className="text-sm text-red-500">{errors.parent_id}</p>
                                     )}
                                 </div>
 

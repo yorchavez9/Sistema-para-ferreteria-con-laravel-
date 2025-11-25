@@ -14,8 +14,7 @@ class CategoryController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Category::with(['parent'])
-            ->withCount(['children', 'products']);
+        $query = Category::withCount(['products']);
 
         // Búsqueda
         if ($request->search) {
@@ -32,43 +31,30 @@ class CategoryController extends Controller
             $query->where('is_active', $request->is_active);
         }
 
-        // Filtro de tipo (principal o subcategoría)
-        if ($request->type === 'main') {
-            $query->whereNull('parent_id');
-        } elseif ($request->type === 'sub') {
-            $query->whereNotNull('parent_id');
-        }
+        // Eliminado filtro por tipo (main/sub) — parent_id ya no existe
 
         // Ordenamiento
         $sortField = $request->get('sort_field', 'sort_order');
         $sortDirection = $request->get('sort_direction', 'asc');
 
-        if ($sortField === 'parent') {
-            $query->leftJoin('categories as parent_categories', 'categories.parent_id', '=', 'parent_categories.id')
-                ->orderBy('parent_categories.name', $sortDirection)
-                ->select('categories.*');
-        } else {
-            $query->orderBy($sortField, $sortDirection);
-            if ($sortField !== 'name') {
-                $query->orderBy('name', 'asc');
-            }
+        $query->orderBy($sortField, $sortDirection);
+        if ($sortField !== 'name') {
+            $query->orderBy('name', 'asc');
         }
 
         $perPage = $request->get('per_page', 15);
         $categories = $query->paginate($perPage)->withQueryString();
 
-        // Estadísticas
+        // Estadísticas (sin parent_id)
         $stats = [
             'total_categories' => Category::count(),
             'active_categories' => Category::where('is_active', true)->count(),
-            'main_categories' => Category::whereNull('parent_id')->count(),
-            'subcategories' => Category::whereNotNull('parent_id')->count(),
         ];
 
         return Inertia::render('Categories/Index', [
             'categories' => $categories,
             'stats' => $stats,
-            'filters' => $request->only(['search', 'is_active', 'type', 'sort_field', 'sort_direction', 'per_page']),
+            'filters' => $request->only(['search', 'is_active', 'sort_field', 'sort_direction', 'per_page']),
         ]);
     }
 
@@ -77,11 +63,7 @@ class CategoryController extends Controller
      */
     public function create()
     {
-        $parentCategories = Category::main()->active()->get();
-
-        return Inertia::render('Categories/Create', [
-            'parentCategories' => $parentCategories,
-        ]);
+        return Inertia::render('Categories/Create');
     }
 
     /**
@@ -93,7 +75,6 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:categories',
             'description' => 'nullable|string',
-            'parent_id' => 'nullable|exists:categories,id',
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
@@ -108,7 +89,7 @@ class CategoryController extends Controller
      */
     public function show(Category $category)
     {
-        $category->load(['parent', 'children', 'products']);
+        $category->load(['products']);
 
         return Inertia::render('Categories/Show', [
             'category' => $category,
@@ -120,14 +101,8 @@ class CategoryController extends Controller
      */
     public function edit(Category $category)
     {
-        $parentCategories = Category::main()
-            ->active()
-            ->where('id', '!=', $category->id)
-            ->get();
-
         return Inertia::render('Categories/Edit', [
             'category' => $category,
-            'parentCategories' => $parentCategories,
         ]);
     }
 
@@ -140,7 +115,6 @@ class CategoryController extends Controller
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:categories,code,' . $category->id,
             'description' => 'nullable|string',
-            'parent_id' => 'nullable|exists:categories,id|not_in:' . $category->id,
             'sort_order' => 'nullable|integer|min:0',
         ]);
 
@@ -159,12 +133,6 @@ class CategoryController extends Controller
         if ($category->products()->count() > 0) {
             return redirect()->route('categories.index')
                 ->with('error', 'No se puede eliminar la categoría porque tiene productos asociados.');
-        }
-
-        // Verificar si tiene subcategorías
-        if ($category->children()->count() > 0) {
-            return redirect()->route('categories.index')
-                ->with('error', 'No se puede eliminar la categoría porque tiene subcategorías.');
         }
 
         $category->delete();
