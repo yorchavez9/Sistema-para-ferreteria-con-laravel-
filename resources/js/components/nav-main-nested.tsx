@@ -74,13 +74,11 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                         const isOpen = openMenus.includes(item.title);
 
                         return (
-                            <Collapsible
-                                key={item.title}
-                                asChild
-                                open={isOpen}
-                                onOpenChange={() => toggleMenu(item.title)}
-                            >
-                                <SidebarMenuItem>
+                            <SidebarMenuItem key={item.title}>
+                                <Collapsible
+                                    open={isOpen}
+                                    onOpenChange={() => toggleMenu(item.title)}
+                                >
                                     <CollapsibleTrigger asChild>
                                         <SidebarMenuButton
                                             tooltip={{ children: item.title }}
@@ -99,13 +97,11 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                                     const isSubOpen = openMenus.includes(`${item.title}-${subItem.title}`);
 
                                                     return (
-                                                        <Collapsible
-                                                            key={subItem.title}
-                                                            asChild
-                                                            open={isSubOpen}
-                                                            onOpenChange={() => toggleMenu(`${item.title}-${subItem.title}`)}
-                                                        >
-                                                            <SidebarMenuSubItem>
+                                                        <SidebarMenuSubItem key={subItem.title}>
+                                                            <Collapsible
+                                                                open={isSubOpen}
+                                                                onOpenChange={() => toggleMenu(`${item.title}-${subItem.title}`)}
+                                                            >
                                                                 <CollapsibleTrigger asChild>
                                                                     <SidebarMenuSubButton className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
                                                                         {subItem.icon && <subItem.icon className="shrink-0" />}
@@ -131,8 +127,8 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                                                         ))}
                                                                     </SidebarMenuSub>
                                                                 </CollapsibleContent>
-                                                            </SidebarMenuSubItem>
-                                                        </Collapsible>
+                                                            </Collapsible>
+                                                        </SidebarMenuSubItem>
                                                     );
                                                 }
 
@@ -154,8 +150,8 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                             })}
                                         </SidebarMenuSub>
                                     </CollapsibleContent>
-                                </SidebarMenuItem>
-                            </Collapsible>
+                                </Collapsible>
+                            </SidebarMenuItem>
                         );
                     }
 
