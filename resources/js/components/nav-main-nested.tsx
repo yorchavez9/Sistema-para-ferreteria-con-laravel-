@@ -89,7 +89,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                             <ChevronRight className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
-                                    <CollapsibleContent className="transition-all duration-200 data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                                    <CollapsibleContent>
                                         <SidebarMenuSub className="ml-0 border-l-0 px-1.5">
                                             {item.items.map((subItem) => {
                                                 // Si el subItem tiene sus propios items (tercer nivel)
@@ -118,7 +118,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                                                                     isActive={thirdItem.href ? page.url.startsWith(thirdItem.href as string) : false}
                                                                                     className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                                                                 >
-                                                                                    <Link href={thirdItem.href || '#'} prefetch>
+                                                                                    <Link href={thirdItem.href || '#'}>
                                                                                         {thirdItem.icon && <thirdItem.icon className="shrink-0" />}
                                                                                         <span>{thirdItem.title}</span>
                                                                                     </Link>
@@ -140,7 +140,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                                             isActive={subItem.href ? page.url.startsWith(subItem.href as string) : false}
                                                             className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                                         >
-                                                            <Link href={subItem.href || '#'} prefetch>
+                                                            <Link href={subItem.href || '#'}>
                                                                 {subItem.icon && <subItem.icon className="shrink-0" />}
                                                                 <span>{subItem.title}</span>
                                                             </Link>
@@ -168,7 +168,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                 tooltip={{ children: item.title }}
                                 className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                             >
-                                <Link href={item.href || '#'} prefetch>
+                                <Link href={item.href || '#'}>
                                     {item.icon && <item.icon className="shrink-0" />}
                                     <span>{item.title}</span>
                                 </Link>
