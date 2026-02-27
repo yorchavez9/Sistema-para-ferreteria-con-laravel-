@@ -19,7 +19,7 @@ class DocumentApiService
             ];
         }
 
-        $apiUrl = settings('reniec_api_url', 'https://api.apis.net.pe/v2/reniec/dni');
+        $apiUrl = settings('reniec_api_url', 'https://api.decolecta.com/v1/reniec/dni');
         $apiToken = settings('reniec_api_token');
 
         try {
@@ -34,19 +34,18 @@ class DocumentApiService
                 $data = $response->json();
 
                 $fullName = $data['full_name']
-                    ?? $data['nombre_completo']
-                    ?? trim(($data['nombres'] ?? '') . ' ' . ($data['apellidoPaterno'] ?? '') . ' ' . ($data['apellidoMaterno'] ?? ''))
-                    ?: trim(($data['first_name'] ?? '') . ' ' . ($data['first_last_name'] ?? '') . ' ' . ($data['second_last_name'] ?? ''));
+                    ?? trim(($data['first_name'] ?? '') . ' ' . ($data['first_last_name'] ?? '') . ' ' . ($data['second_last_name'] ?? ''))
+                    ?: null;
 
                 return [
                     'success' => true,
                     'data' => [
                         'document_type' => 'DNI',
-                        'document_number' => $data['numeroDocumento'] ?? $data['document_number'] ?? $dni,
-                        'name' => $fullName ?: null,
-                        'first_name' => $data['nombres'] ?? $data['first_name'] ?? null,
-                        'first_last_name' => $data['apellidoPaterno'] ?? $data['first_last_name'] ?? null,
-                        'second_last_name' => $data['apellidoMaterno'] ?? $data['second_last_name'] ?? null,
+                        'document_number' => $data['document_number'] ?? $dni,
+                        'name' => $fullName,
+                        'first_name' => $data['first_name'] ?? null,
+                        'first_last_name' => $data['first_last_name'] ?? null,
+                        'second_last_name' => $data['second_last_name'] ?? null,
                     ]
                 ];
             }
@@ -85,7 +84,7 @@ class DocumentApiService
             ];
         }
 
-        $apiUrl = settings('sunat_api_url', 'https://api.apis.net.pe/v2/sunat/ruc');
+        $apiUrl = settings('sunat_api_url', 'https://api.decolecta.com/v1/sunat/ruc');
         $apiToken = settings('sunat_api_token');
 
         try {
@@ -103,13 +102,16 @@ class DocumentApiService
                     'success' => true,
                     'data' => [
                         'document_type' => 'RUC',
-                        'document_number' => $data['numeroDocumento'] ?? $data['ruc'] ?? $ruc,
-                        'name' => $data['razonSocial'] ?? $data['razon_social'] ?? $data['nombre_comercial'] ?? null,
-                        'razon_social' => $data['razonSocial'] ?? $data['razon_social'] ?? null,
-                        'nombre_comercial' => $data['nombreComercial'] ?? $data['nombre_comercial'] ?? null,
+                        'document_number' => $data['numero_documento'] ?? $ruc,
+                        'name' => $data['razon_social'] ?? null,
+                        'razon_social' => $data['razon_social'] ?? null,
+                        'nombre_comercial' => $data['nombre_comercial'] ?? null,
                         'direccion' => $data['direccion'] ?? null,
                         'estado' => $data['estado'] ?? null,
                         'condicion' => $data['condicion'] ?? null,
+                        'distrito' => $data['distrito'] ?? null,
+                        'provincia' => $data['provincia'] ?? null,
+                        'departamento' => $data['departamento'] ?? null,
                     ]
                 ];
             }

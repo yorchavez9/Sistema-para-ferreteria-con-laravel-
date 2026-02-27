@@ -66,7 +66,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
 
     return (
         <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel>Sistema Ferretería</SidebarGroupLabel>
+            <SidebarGroupLabel>Sistema</SidebarGroupLabel>
             <SidebarMenu className="space-y-0.5">
                 {items.map((item) => {
                     // Si el item tiene subelementos

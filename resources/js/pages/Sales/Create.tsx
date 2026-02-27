@@ -1847,7 +1847,7 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                 {/* Modal para búsqueda en RENIEC/SUNAT */}
                 {showExternalSearchModal && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+                        <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto">
                             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                                 <Search className="h-5 w-5" />
                                 Buscar en RENIEC/SUNAT
@@ -1912,17 +1912,17 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                             ) : (
                                 <>
                                     {externalData ? (
-                                        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                                            <p className="text-sm text-green-800 font-medium">
-                                                ✓ Datos encontrados en {externalDocument.length === 8 ? 'RENIEC' : 'SUNAT'}
+                                        <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                                            <p className="text-sm text-green-800 dark:text-green-300 font-medium">
+                                                Datos encontrados en {externalDocument.length === 8 ? 'RENIEC' : 'SUNAT'}
                                             </p>
                                         </div>
                                     ) : (
-                                        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
-                                            <p className="text-sm text-amber-800 font-medium">
-                                                ⚠ No se encontró en {externalDocument.length === 8 ? 'RENIEC' : 'SUNAT'}
+                                        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                                            <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                                                No se encontró en {externalDocument.length === 8 ? 'RENIEC' : 'SUNAT'}
                                             </p>
-                                            <p className="text-xs text-amber-700 mt-1">
+                                            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
                                                 Ingresa los datos manualmente para crear el cliente
                                             </p>
                                         </div>
@@ -2033,15 +2033,15 @@ export default function SalesCreate({ defaultBranchId, customers, branches, prod
                 {/* Modal para ingresar teléfono (opcional) */}
                 {showPhoneModal && pendingCustomerData && (
                     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                        <div className="bg-white rounded-lg p-6 max-w-md w-full">
+                        <div className="bg-white dark:bg-gray-900 rounded-lg p-6 max-w-md w-full">
                             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                                 Cliente Encontrado
                             </h3>
 
-                            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
-                                <p className="text-sm font-medium text-green-900">{pendingCustomerData.name}</p>
-                                <p className="text-xs text-green-700 mt-1">
+                            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                                <p className="text-sm font-medium text-green-900 dark:text-green-200">{pendingCustomerData.name}</p>
+                                <p className="text-xs text-green-700 dark:text-green-400 mt-1">
                                     {pendingCustomerData.document_type}: {pendingCustomerData.document_number}
                                 </p>
                             </div>

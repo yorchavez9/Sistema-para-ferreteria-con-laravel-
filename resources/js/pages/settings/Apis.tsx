@@ -40,11 +40,11 @@ const breadcrumbs: BreadcrumbItem[] = [
 export default function Apis({ settings }: ApisProps) {
     const [formData, setFormData] = useState({
         // RENIEC
-        reniec_api_url: settings.reniec_api_url || 'https://api.apis.net.pe/v2/reniec/dni',
+        reniec_api_url: settings.reniec_api_url || 'https://api.decolecta.com/v1/reniec/dni',
         reniec_api_token: settings.reniec_api_token || '',
         reniec_api_enabled: settings.reniec_api_enabled || false,
         // SUNAT
-        sunat_api_url: settings.sunat_api_url || 'https://api.apis.net.pe/v2/sunat/ruc',
+        sunat_api_url: settings.sunat_api_url || 'https://api.decolecta.com/v1/sunat/ruc',
         sunat_api_token: settings.sunat_api_token || '',
         sunat_api_ruc: settings.sunat_api_ruc || '',
         sunat_api_username: settings.sunat_api_username || '',
@@ -135,7 +135,7 @@ export default function Apis({ settings }: ApisProps) {
                                     <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5" />
                                     <div className="text-sm text-blue-800 dark:text-blue-200">
                                         <p className="font-semibold mb-1">Proveedor Recomendado:</p>
-                                        <p>Para obtener un token de API, visita: <a href="https://apis.net.pe" target="_blank" rel="noopener noreferrer" className="underline">apis.net.pe</a></p>
+                                        <p>Para obtener un token de API, visita: <a href="https://decolecta.com" target="_blank" rel="noopener noreferrer" className="underline">decolecta.com</a></p>
                                     </div>
                                 </div>
                             </div>
@@ -147,7 +147,7 @@ export default function Apis({ settings }: ApisProps) {
                                     type="url"
                                     value={formData.reniec_api_url}
                                     onChange={(e) => handleChange('reniec_api_url', e.target.value)}
-                                    placeholder="https://api.apis.net.pe/v2/reniec/dni"
+                                    placeholder="https://api.decolecta.com/v1/reniec/dni"
                                     className={errors.reniec_api_url ? 'border-destructive' : ''}
                                 />
                                 {errors.reniec_api_url && (
@@ -214,7 +214,7 @@ export default function Apis({ settings }: ApisProps) {
                                     <div className="text-sm text-blue-800 dark:text-blue-200">
                                         <p className="font-semibold mb-1">Proveedores Recomendados:</p>
                                         <ul className="list-disc list-inside space-y-1">
-                                            <li><a href="https://apis.net.pe" target="_blank" rel="noopener noreferrer" className="underline">apis.net.pe</a> - Consulta de RUC</li>
+                                            <li><a href="https://decolecta.com" target="_blank" rel="noopener noreferrer" className="underline">decolecta.com</a> - Consulta de RUC</li>
                                             <li><a href="https://nubefact.com" target="_blank" rel="noopener noreferrer" className="underline">nubefact.com</a> - Facturación Electrónica</li>
                                         </ul>
                                     </div>
@@ -229,7 +229,7 @@ export default function Apis({ settings }: ApisProps) {
                                         type="url"
                                         value={formData.sunat_api_url}
                                         onChange={(e) => handleChange('sunat_api_url', e.target.value)}
-                                        placeholder="https://api.apis.net.pe/v2/sunat/ruc"
+                                        placeholder="https://api.decolecta.com/v1/sunat/ruc"
                                         className={errors.sunat_api_url ? 'border-destructive' : ''}
                                     />
                                     {errors.sunat_api_url && (
