@@ -13,10 +13,9 @@ export default defineConfig({
         }),
         react(),
         tailwindcss(),
-        // Wayfinder temporalmente deshabilitado
-        // wayfinder({
-        //     formVariants: true,
-        // }),
+        wayfinder({
+            formVariants: true,
+        }),
     ],
     esbuild: {
         jsx: 'automatic',
