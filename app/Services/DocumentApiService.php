@@ -7,40 +7,46 @@ use Illuminate\Support\Facades\Log;
 
 class DocumentApiService
 {
-    protected $apiUrl;
-    protected $apiToken;
-
-    public function __construct()
-    {
-        $this->apiUrl = config('services.decolecta.url');
-        $this->apiToken = config('services.decolecta.token');
-    }
-
     /**
      * Consultar DNI en RENIEC
      */
     public function consultarDNI(string $dni): ?array
     {
+        if (!is_reniec_enabled()) {
+            return [
+                'success' => false,
+                'message' => 'La API de RENIEC no está habilitada. Configúrala en Configuración > APIs Externas.'
+            ];
+        }
+
+        $apiUrl = settings('reniec_api_url', 'https://api.apis.net.pe/v2/reniec/dni');
+        $apiToken = settings('reniec_api_token');
+
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
+                'Authorization' => 'Bearer ' . $apiToken,
                 'Content-Type' => 'application/json',
-            ])->get("{$this->apiUrl}/reniec/dni", [
+            ])->get($apiUrl, [
                 'numero' => $dni
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
 
+                $fullName = $data['full_name']
+                    ?? $data['nombre_completo']
+                    ?? trim(($data['nombres'] ?? '') . ' ' . ($data['apellidoPaterno'] ?? '') . ' ' . ($data['apellidoMaterno'] ?? ''))
+                    ?: trim(($data['first_name'] ?? '') . ' ' . ($data['first_last_name'] ?? '') . ' ' . ($data['second_last_name'] ?? ''));
+
                 return [
                     'success' => true,
                     'data' => [
                         'document_type' => 'DNI',
-                        'document_number' => $data['document_number'] ?? $dni,
-                        'name' => $data['full_name'] ?? ($data['first_name'] . ' ' . $data['first_last_name'] . ' ' . $data['second_last_name']),
-                        'first_name' => $data['first_name'] ?? null,
-                        'first_last_name' => $data['first_last_name'] ?? null,
-                        'second_last_name' => $data['second_last_name'] ?? null,
+                        'document_number' => $data['numeroDocumento'] ?? $data['document_number'] ?? $dni,
+                        'name' => $fullName ?: null,
+                        'first_name' => $data['nombres'] ?? $data['first_name'] ?? null,
+                        'first_last_name' => $data['apellidoPaterno'] ?? $data['first_last_name'] ?? null,
+                        'second_last_name' => $data['apellidoMaterno'] ?? $data['second_last_name'] ?? null,
                     ]
                 ];
             }
@@ -52,7 +58,7 @@ class DocumentApiService
 
             return [
                 'success' => false,
-                'message' => 'No se pudo consultar el DNI'
+                'message' => 'No se pudo consultar el DNI. Código: ' . $response->status()
             ];
         } catch (\Exception $e) {
             Log::error('API DNI Exception', [
@@ -72,11 +78,21 @@ class DocumentApiService
      */
     public function consultarRUC(string $ruc): ?array
     {
+        if (!is_sunat_enabled()) {
+            return [
+                'success' => false,
+                'message' => 'La API de SUNAT no está habilitada. Configúrala en Configuración > APIs Externas.'
+            ];
+        }
+
+        $apiUrl = settings('sunat_api_url', 'https://api.apis.net.pe/v2/sunat/ruc');
+        $apiToken = settings('sunat_api_token');
+
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiToken,
+                'Authorization' => 'Bearer ' . $apiToken,
                 'Content-Type' => 'application/json',
-            ])->get("{$this->apiUrl}/sunat/ruc", [
+            ])->get($apiUrl, [
                 'numero' => $ruc
             ]);
 
@@ -87,10 +103,10 @@ class DocumentApiService
                     'success' => true,
                     'data' => [
                         'document_type' => 'RUC',
-                        'document_number' => $data['ruc'] ?? $ruc,
-                        'name' => $data['razon_social'] ?? $data['nombre_comercial'] ?? null,
-                        'razon_social' => $data['razon_social'] ?? null,
-                        'nombre_comercial' => $data['nombre_comercial'] ?? null,
+                        'document_number' => $data['numeroDocumento'] ?? $data['ruc'] ?? $ruc,
+                        'name' => $data['razonSocial'] ?? $data['razon_social'] ?? $data['nombre_comercial'] ?? null,
+                        'razon_social' => $data['razonSocial'] ?? $data['razon_social'] ?? null,
+                        'nombre_comercial' => $data['nombreComercial'] ?? $data['nombre_comercial'] ?? null,
                         'direccion' => $data['direccion'] ?? null,
                         'estado' => $data['estado'] ?? null,
                         'condicion' => $data['condicion'] ?? null,
@@ -105,7 +121,7 @@ class DocumentApiService
 
             return [
                 'success' => false,
-                'message' => 'No se pudo consultar el RUC'
+                'message' => 'No se pudo consultar el RUC. Código: ' . $response->status()
             ];
         } catch (\Exception $e) {
             Log::error('API RUC Exception', [
