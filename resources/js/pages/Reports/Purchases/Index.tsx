@@ -14,7 +14,7 @@ import {
     RefreshCw,
     Package,
     AlertCircle,
-    Filter,
+    ShoppingBag,
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
@@ -127,7 +127,6 @@ export default function PurchasesReport({
     filters: initialFilters = {},
 }: Props) {
     const [searchTerm, setSearchTerm] = useState(initialFilters.search || '');
-    const [showFilters, setShowFilters] = useState(false);
     const [sortField, setSortField] = useState(initialFilters.sort_field || 'order_date');
     const [sortDirection, setSortDirection] = useState(initialFilters.sort_direction || 'desc');
     const [filterData, setFilterData] = useState({
@@ -311,209 +310,203 @@ export default function PurchasesReport({
             <div className="space-y-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Reporte de Compras</h1>
-                        <p className="text-muted-foreground">
-                            Análisis detallado de órdenes de compra y recepciones
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <ShoppingBag className="h-8 w-8 text-primary" />
+                        <div>
+                            <h1 className="text-3xl font-bold">Reporte de Compras</h1>
+                            <p className="text-muted-foreground">
+                                Análisis detallado de órdenes de compra y recepciones
+                            </p>
+                        </div>
                     </div>
                     <Button
                         onClick={handleGeneratePdf}
                         disabled={isGenerating}
-                        className="bg-red-600 hover:bg-red-700"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
                     >
                         <FileDown className="mr-2 h-4 w-4" />
                         {isGenerating ? 'Generando...' : 'Exportar PDF'}
                     </Button>
                 </div>
 
-                {/* Barra de Búsqueda */}
+                {/* Filtros - Always visible */}
                 <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <CardHeader>
+                        <CardTitle>Filtros</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Search bar full-width at top */}
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="text"
+                                placeholder="Buscar por número de orden, proveedor..."
+                                value={searchTerm}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+
+                        {/* Filters in 4-column grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="date_from">Fecha Desde</Label>
                                 <Input
-                                    type="text"
-                                    placeholder="Buscar por número de orden, proveedor..."
-                                    value={searchTerm}
-                                    onChange={(e) => handleSearchChange(e.target.value)}
-                                    className="pl-10"
+                                    id="date_from"
+                                    type="date"
+                                    value={filterData.date_from}
+                                    onChange={(e) =>
+                                        setFilterData({ ...filterData, date_from: e.target.value })
+                                    }
                                 />
                             </div>
-                            <Button onClick={() => setShowFilters(!showFilters)} variant="outline">
-                                <Filter className="h-4 w-4 mr-2" />
-                                {showFilters ? 'Ocultar Filtros' : 'Filtros Avanzados'}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="date_to">Fecha Hasta</Label>
+                                <Input
+                                    id="date_to"
+                                    type="date"
+                                    value={filterData.date_to}
+                                    onChange={(e) =>
+                                        setFilterData({ ...filterData, date_to: e.target.value })
+                                    }
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="supplier_id">Proveedor</Label>
+                                <Select
+                                    value={filterData.supplier_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, supplier_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="supplier_id">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todos</SelectItem>
+                                        {suppliers.map((supplier) => (
+                                            <SelectItem key={supplier.id} value={supplier.id.toString()}>
+                                                {supplier.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="branch_id">Sucursal</Label>
+                                <Select
+                                    value={filterData.branch_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, branch_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="branch_id">
+                                        <SelectValue placeholder="Todas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todas</SelectItem>
+                                        {branches.map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                {branch.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="user_id">Usuario</Label>
+                                <Select
+                                    value={filterData.user_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, user_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="user_id">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todos</SelectItem>
+                                        {users.map((user) => (
+                                            <SelectItem key={user.id} value={user.id.toString()}>
+                                                {user.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="status">Estado</Label>
+                                <Select
+                                    value={filterData.status || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, status: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="status">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todos</SelectItem>
+                                        <SelectItem value="pendiente">Pendiente</SelectItem>
+                                        <SelectItem value="parcial">Parcial</SelectItem>
+                                        <SelectItem value="recibido">Recibido</SelectItem>
+                                        <SelectItem value="cancelado">Cancelado</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="payment_method">Método de Pago</Label>
+                                <Select
+                                    value={filterData.payment_method || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, payment_method: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="payment_method">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todos</SelectItem>
+                                        <SelectItem value="efectivo">Efectivo</SelectItem>
+                                        <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                                        <SelectItem value="transferencia">Transferencia</SelectItem>
+                                        <SelectItem value="credito">Crédito</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Action buttons right-aligned */}
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button onClick={handleFilter}>
+                                <Search className="mr-2 h-4 w-4" />
+                                Aplicar Filtros
+                            </Button>
+                            <Button onClick={clearFilters} variant="outline">
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Limpiar
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Filtros Avanzados */}
-                {showFilters && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Filtros Avanzados</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="date_from">Fecha Desde</Label>
-                                    <Input
-                                        id="date_from"
-                                        type="date"
-                                        value={filterData.date_from}
-                                        onChange={(e) =>
-                                            setFilterData({ ...filterData, date_from: e.target.value })
-                                        }
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="date_to">Fecha Hasta</Label>
-                                    <Input
-                                        id="date_to"
-                                        type="date"
-                                        value={filterData.date_to}
-                                        onChange={(e) =>
-                                            setFilterData({ ...filterData, date_to: e.target.value })
-                                        }
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="supplier_id">Proveedor</Label>
-                                    <Select
-                                        value={filterData.supplier_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, supplier_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="supplier_id">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
-                                            {suppliers.map((supplier) => (
-                                                <SelectItem key={supplier.id} value={supplier.id.toString()}>
-                                                    {supplier.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="branch_id">Sucursal</Label>
-                                    <Select
-                                        value={filterData.branch_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, branch_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="branch_id">
-                                            <SelectValue placeholder="Todas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todas</SelectItem>
-                                            {branches.map((branch) => (
-                                                <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                    {branch.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="user_id">Usuario</Label>
-                                    <Select
-                                        value={filterData.user_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, user_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="user_id">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
-                                            {users.map((user) => (
-                                                <SelectItem key={user.id} value={user.id.toString()}>
-                                                    {user.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="status">Estado</Label>
-                                    <Select
-                                        value={filterData.status}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, status: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="status">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
-                                            <SelectItem value="pendiente">Pendiente</SelectItem>
-                                            <SelectItem value="parcial">Parcial</SelectItem>
-                                            <SelectItem value="recibido">Recibido</SelectItem>
-                                            <SelectItem value="cancelado">Cancelado</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="payment_method">Método de Pago</Label>
-                                    <Select
-                                        value={filterData.payment_method}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, payment_method: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="payment_method">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
-                                            <SelectItem value="efectivo">Efectivo</SelectItem>
-                                            <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                                            <SelectItem value="transferencia">Transferencia</SelectItem>
-                                            <SelectItem value="credito">Crédito</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 mt-4">
-                                <Button onClick={handleFilter}>
-                                    <Search className="mr-2 h-4 w-4" />
-                                    Aplicar Filtros
-                                </Button>
-                                <Button onClick={clearFilters} variant="outline">
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Limpiar
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
                 {/* Resumen */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <Card>
+                        <Card className="border-l-4 border-blue-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Total Compras</div>
                                 <div className="text-2xl font-bold">{totals.total_purchases}</div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-slate-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Subtotal</div>
                                 <div className="text-2xl font-bold">
@@ -521,7 +514,7 @@ export default function PurchasesReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-amber-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">IGV</div>
                                 <div className="text-2xl font-bold">
@@ -529,7 +522,7 @@ export default function PurchasesReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-indigo-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Total</div>
                                 <div className="text-2xl font-bold text-blue-600">
@@ -543,7 +536,7 @@ export default function PurchasesReport({
                 {/* Estados */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-3">
-                        <Card>
+                        <Card className="border-l-4 border-amber-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Pendientes</div>
                                 <div className="text-2xl font-bold text-yellow-600">
@@ -551,7 +544,7 @@ export default function PurchasesReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-blue-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Parciales</div>
                                 <div className="text-2xl font-bold text-blue-600">
@@ -559,7 +552,7 @@ export default function PurchasesReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-green-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Recibidos</div>
                                 <div className="text-2xl font-bold text-green-600">
@@ -572,7 +565,7 @@ export default function PurchasesReport({
 
                 {/* Alerta de pendientes */}
                 {totals && totals.pending_count > 0 && (
-                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                         <div className="flex">
                             <AlertCircle className="h-5 w-5 text-yellow-400" />
                             <div className="ml-3">

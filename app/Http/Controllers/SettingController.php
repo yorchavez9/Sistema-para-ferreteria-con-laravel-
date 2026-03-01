@@ -228,6 +228,37 @@ class SettingController extends Controller
     }
 
     /**
+     * Mostrar configuración de tema
+     */
+    public function theme()
+    {
+        $settings = Setting::get();
+
+        return Inertia::render('settings/Theme', [
+            'settings' => $settings,
+        ]);
+    }
+
+    /**
+     * Actualizar configuración de tema
+     */
+    public function updateTheme(Request $request)
+    {
+        $request->validate([
+            'primary_color_light' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+            'primary_color_dark' => 'required|string|regex:/^#[0-9A-Fa-f]{6}$/',
+        ]);
+
+        $settings = Setting::get();
+        $settings->update($request->only([
+            'primary_color_light',
+            'primary_color_dark',
+        ]));
+
+        return redirect()->back()->with('success', 'Colores del tema actualizados exitosamente.');
+    }
+
+    /**
      * Mostrar configuración de ventas
      */
     public function sales()

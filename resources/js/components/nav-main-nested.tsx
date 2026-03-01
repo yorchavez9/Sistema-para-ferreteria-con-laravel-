@@ -66,7 +66,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
 
     return (
         <SidebarGroup className="px-2 py-0">
-            <SidebarGroupLabel>Sistema</SidebarGroupLabel>
+            <SidebarGroupLabel className="uppercase tracking-wider font-semibold text-[0.65rem] text-sidebar-foreground/50">Sistema</SidebarGroupLabel>
             <SidebarMenu className="space-y-0.5">
                 {items.map((item) => {
                     // Si el item tiene subelementos
@@ -85,7 +85,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                             className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                                         >
                                             {item.icon && <item.icon className="shrink-0" />}
-                                            <span>{item.title}</span>
+                                            <span className="font-semibold">{item.title}</span>
                                             <ChevronRight className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-90' : ''}`} />
                                         </SidebarMenuButton>
                                     </CollapsibleTrigger>
@@ -105,7 +105,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                                                 <CollapsibleTrigger asChild>
                                                                     <SidebarMenuSubButton className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
                                                                         {subItem.icon && <subItem.icon className="shrink-0" />}
-                                                                        <span>{subItem.title}</span>
+                                                                        <span className="font-medium">{subItem.title}</span>
                                                                         <ChevronRight className={`ml-auto h-4 w-4 shrink-0 transition-transform duration-200 ${isSubOpen ? 'rotate-90' : ''}`} />
                                                                     </SidebarMenuSubButton>
                                                                 </CollapsibleTrigger>
@@ -120,7 +120,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                                                                 >
                                                                                     <Link href={thirdItem.href || '#'}>
                                                                                         {thirdItem.icon && <thirdItem.icon className="shrink-0" />}
-                                                                                        <span>{thirdItem.title}</span>
+                                                                                        <span className="font-medium">{thirdItem.title}</span>
                                                                                     </Link>
                                                                                 </SidebarMenuSubButton>
                                                                             </SidebarMenuSubItem>
@@ -142,7 +142,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                                                         >
                                                             <Link href={subItem.href || '#'}>
                                                                 {subItem.icon && <subItem.icon className="shrink-0" />}
-                                                                <span>{subItem.title}</span>
+                                                                <span className="font-medium">{subItem.title}</span>
                                                             </Link>
                                                         </SidebarMenuSubButton>
                                                     </SidebarMenuSubItem>
@@ -170,7 +170,7 @@ export function NavMainNested({ items = [] }: { items: NavItem[] }) {
                             >
                                 <Link href={item.href || '#'}>
                                     {item.icon && <item.icon className="shrink-0" />}
-                                    <span>{item.title}</span>
+                                    <span className="font-semibold">{item.title}</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

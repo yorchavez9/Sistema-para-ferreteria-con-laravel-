@@ -14,7 +14,6 @@ import {
     RefreshCw,
     Eye,
     FileText,
-    Filter,
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
@@ -117,7 +116,6 @@ export default function CashDailyReport({
     filters: initialFilters = {},
 }: Props) {
     const [searchTerm, setSearchTerm] = useState(initialFilters.search || '');
-    const [showFilters, setShowFilters] = useState(false);
     const [filterData, setFilterData] = useState({
         date_from: initialFilters.date_from || '',
         date_to: initialFilters.date_to || '',
@@ -131,7 +129,7 @@ export default function CashDailyReport({
     const [sortDirection, setSortDirection] = useState(initialFilters.sort_direction || 'desc');
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // Búsqueda en tiempo real con debounce
+    // Busqueda en tiempo real con debounce
     const debouncedSearch = useDebouncedCallback((value: string) => {
         const params: any = {
             search: value,
@@ -295,54 +293,180 @@ export default function CashDailyReport({
             <div className="space-y-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Reporte de Caja Diaria</h1>
-                        <p className="text-muted-foreground">
-                            Detalle de sesiones y movimientos de caja
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <Wallet className="h-8 w-8 text-primary" />
+                        <div>
+                            <h1 className="text-3xl font-bold">Reporte de Caja Diaria</h1>
+                            <p className="text-muted-foreground">
+                                Detalle de sesiones y movimientos de caja
+                            </p>
+                        </div>
                     </div>
                     <Button
                         onClick={handleGeneratePdf}
                         disabled={isGenerating}
-                        className="bg-red-600 hover:bg-red-700"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
                     >
                         <FileDown className="mr-2 h-4 w-4" />
                         {isGenerating ? 'Generando...' : 'Exportar PDF'}
                     </Button>
                 </div>
 
-                {/* Barra de Búsqueda */}
+                {/* Filtros - Always visible */}
                 <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <CardHeader>
+                        <CardTitle>Filtros</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Search bar - full width at top */}
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="text"
+                                placeholder="Buscar por ID de sesion o cajero..."
+                                value={searchTerm}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+
+                        {/* Filter fields - 3 column grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="date_from">Fecha Desde</Label>
                                 <Input
-                                    type="text"
-                                    placeholder="Buscar por ID de sesión o cajero..."
-                                    value={searchTerm}
-                                    onChange={(e) => handleSearchChange(e.target.value)}
-                                    className="pl-10"
+                                    id="date_from"
+                                    type="date"
+                                    value={filterData.date_from}
+                                    onChange={(e) =>
+                                        setFilterData({ ...filterData, date_from: e.target.value })
+                                    }
                                 />
                             </div>
-                            <Button onClick={() => setShowFilters(!showFilters)} variant="outline">
-                                <Filter className="h-4 w-4 mr-2" />
-                                {showFilters ? 'Ocultar Filtros' : 'Filtros Avanzados'}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="date_to">Fecha Hasta</Label>
+                                <Input
+                                    id="date_to"
+                                    type="date"
+                                    value={filterData.date_to}
+                                    onChange={(e) =>
+                                        setFilterData({ ...filterData, date_to: e.target.value })
+                                    }
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="branch_id">Sucursal</Label>
+                                <Select
+                                    value={filterData.branch_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, branch_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="branch_id">
+                                        <SelectValue placeholder="Todas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todas</SelectItem>
+                                        {branches.map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                {branch.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="cash_register_id">Caja Registradora</Label>
+                                <Select
+                                    value={filterData.cash_register_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, cash_register_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="cash_register_id">
+                                        <SelectValue placeholder="Todas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todas</SelectItem>
+                                        {cashRegisters.map((register) => (
+                                            <SelectItem key={register.id} value={register.id.toString()}>
+                                                {register.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="user_id">Cajero</Label>
+                                <Select
+                                    value={filterData.user_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, user_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="user_id">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todos</SelectItem>
+                                        {users.map((user) => (
+                                            <SelectItem key={user.id} value={user.id.toString()}>
+                                                {user.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="status">Estado</Label>
+                                <Select
+                                    value={filterData.status || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, status: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="status">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todos</SelectItem>
+                                        <SelectItem value="abierta">Abierta</SelectItem>
+                                        <SelectItem value="cerrada">Cerrada</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Action buttons - right aligned */}
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button onClick={clearFilters} variant="outline">
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Limpiar
+                            </Button>
+                            <Button onClick={handleFilter}>
+                                <Search className="mr-2 h-4 w-4" />
+                                Aplicar Filtros
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Estadísticas Resumidas */}
+                {/* Estadisticas Resumidas */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                        <Card>
+                        <Card className="border-l-4 border-blue-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Sesiones</div>
                                 <div className="text-2xl font-bold">{totals.count}</div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-slate-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Saldo Inicial Total</div>
                                 <div className="text-2xl font-bold">
@@ -350,7 +474,7 @@ export default function CashDailyReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-amber-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Saldo Esperado</div>
                                 <div className="text-2xl font-bold">
@@ -358,7 +482,7 @@ export default function CashDailyReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-green-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Saldo Real</div>
                                 <div className="text-2xl font-bold text-green-600">
@@ -366,7 +490,7 @@ export default function CashDailyReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-purple-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Diferencia Total</div>
                                 <div
@@ -379,138 +503,6 @@ export default function CashDailyReport({
                             </CardContent>
                         </Card>
                     </div>
-                )}
-
-                {/* Filtros Avanzados */}
-                {showFilters && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Filtros Avanzados</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="date_from">Fecha Desde</Label>
-                                    <Input
-                                        id="date_from"
-                                        type="date"
-                                        value={filterData.date_from}
-                                        onChange={(e) =>
-                                            setFilterData({ ...filterData, date_from: e.target.value })
-                                        }
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="date_to">Fecha Hasta</Label>
-                                    <Input
-                                        id="date_to"
-                                        type="date"
-                                        value={filterData.date_to}
-                                        onChange={(e) =>
-                                            setFilterData({ ...filterData, date_to: e.target.value })
-                                        }
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="branch_id">Sucursal</Label>
-                                    <Select
-                                        value={filterData.branch_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, branch_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="branch_id">
-                                            <SelectValue placeholder="Todas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todas</SelectItem>
-                                            {branches.map((branch) => (
-                                                <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                    {branch.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="cash_register_id">Caja Registradora</Label>
-                                    <Select
-                                        value={filterData.cash_register_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, cash_register_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="cash_register_id">
-                                            <SelectValue placeholder="Todas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todas</SelectItem>
-                                            {cashRegisters.map((register) => (
-                                                <SelectItem key={register.id} value={register.id.toString()}>
-                                                    {register.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="user_id">Cajero</Label>
-                                    <Select
-                                        value={filterData.user_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, user_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="user_id">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
-                                            {users.map((user) => (
-                                                <SelectItem key={user.id} value={user.id.toString()}>
-                                                    {user.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="status">Estado</Label>
-                                    <Select
-                                        value={filterData.status}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, status: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="status">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
-                                            <SelectItem value="abierta">Abierta</SelectItem>
-                                            <SelectItem value="cerrada">Cerrada</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 mt-4">
-                                <Button onClick={handleFilter}>
-                                    <Search className="mr-2 h-4 w-4" />
-                                    Aplicar Filtros
-                                </Button>
-                                <Button onClick={clearFilters} variant="outline">
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Limpiar
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
                 )}
 
                 {/* Tabla de Sesiones */}
@@ -675,7 +667,7 @@ export default function CashDailyReport({
                             </TableBody>
                         </Table>
 
-                        {/* Paginación */}
+                        {/* Paginacion */}
                         {sessions?.data && sessions.data.length > 0 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t">
                                 <div className="text-sm text-muted-foreground">

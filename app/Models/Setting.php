@@ -33,6 +33,10 @@ class Setting extends Model
         'price_decimals',
         'allow_negative_stock',
 
+        // Personalización de Tema
+        'primary_color_light',
+        'primary_color_dark',
+
         // APIs Externas - RENIEC
         'reniec_api_url',
         'reniec_api_token',

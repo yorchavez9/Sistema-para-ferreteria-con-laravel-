@@ -3,11 +3,26 @@ import { Head, router } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
 import { formatCurrency } from '@/lib/format-currency';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { useState, FormEvent } from 'react';
-import { FileDown, Search, RefreshCw, Receipt, TrendingUp } from 'lucide-react';
+import { FileDown, Search, RefreshCw, Receipt, TrendingUp, Hash, DollarSign } from 'lucide-react';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Reportes', href: '/reports' },
@@ -113,16 +128,20 @@ export default function ExpensesReport({
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Reporte de Gastos</h1>
-                        <p className="text-muted-foreground">
-                            Análisis detallado de gastos operativos por categoría
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <Receipt className="h-8 w-8 text-primary" />
+                        <div>
+                            <h1 className="text-3xl font-bold">Reporte de Gastos</h1>
+                            <p className="text-muted-foreground">
+                                Analisis detallado de gastos operativos por categoria
+                            </p>
+                        </div>
                     </div>
                     <Button
                         onClick={handleGeneratePdf}
                         disabled={isGenerating}
-                        className="bg-red-600 hover:bg-red-700"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
                     >
                         <FileDown className="mr-2 h-4 w-4" />
                         {isGenerating ? 'Generando...' : 'Exportar PDF'}
@@ -130,272 +149,314 @@ export default function ExpensesReport({
                 </div>
 
                 {/* Filtros */}
-                <Card className="p-6">
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
-                            {/* Fecha Desde */}
-                            <div className="space-y-2">
-                                <Label htmlFor="date_from">Fecha Desde</Label>
-                                <Input
-                                    id="date_from"
-                                    type="date"
-                                    value={filters.date_from}
-                                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                                />
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Filtros</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleSubmit}>
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                                {/* Fecha Desde */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_from">Fecha Desde</Label>
+                                    <Input
+                                        id="date_from"
+                                        type="date"
+                                        value={filters.date_from}
+                                        onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Fecha Hasta */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_to">Fecha Hasta</Label>
+                                    <Input
+                                        id="date_to"
+                                        type="date"
+                                        value={filters.date_to}
+                                        onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Categoria */}
+                                <div className="space-y-2">
+                                    <Label>Categoria</Label>
+                                    <Select
+                                        value={filters.category_id}
+                                        onValueChange={(value) => handleFilterChange('category_id', value === '_all' ? '' : value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="_all">Todas</SelectItem>
+                                            {categories.map((category) => (
+                                                <SelectItem key={category.id} value={String(category.id)}>
+                                                    {category.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Sucursal */}
+                                <div className="space-y-2">
+                                    <Label>Sucursal</Label>
+                                    <Select
+                                        value={filters.branch_id}
+                                        onValueChange={(value) => handleFilterChange('branch_id', value === '_all' ? '' : value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="_all">Todas</SelectItem>
+                                            {branches.map((branch) => (
+                                                <SelectItem key={branch.id} value={String(branch.id)}>
+                                                    {branch.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Usuario */}
+                                <div className="space-y-2">
+                                    <Label>Usuario</Label>
+                                    <Select
+                                        value={filters.user_id}
+                                        onValueChange={(value) => handleFilterChange('user_id', value === '_all' ? '' : value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Todos" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="_all">Todos</SelectItem>
+                                            {users.map((user) => (
+                                                <SelectItem key={user.id} value={String(user.id)}>
+                                                    {user.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Metodo de Pago */}
+                                <div className="space-y-2">
+                                    <Label>Metodo de Pago</Label>
+                                    <Select
+                                        value={filters.payment_method}
+                                        onValueChange={(value) => handleFilterChange('payment_method', value === '_all' ? '' : value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Todos" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="_all">Todos</SelectItem>
+                                            <SelectItem value="efectivo">Efectivo</SelectItem>
+                                            <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                                            <SelectItem value="transferencia">Transferencia</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Monto Minimo */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="min_amount">Monto Minimo</Label>
+                                    <Input
+                                        id="min_amount"
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        value={filters.min_amount}
+                                        onChange={(e) => handleFilterChange('min_amount', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Monto Maximo */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="max_amount">Monto Maximo</Label>
+                                    <Input
+                                        id="max_amount"
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        value={filters.max_amount}
+                                        onChange={(e) => handleFilterChange('max_amount', e.target.value)}
+                                    />
+                                </div>
                             </div>
 
-                            {/* Fecha Hasta */}
-                            <div className="space-y-2">
-                                <Label htmlFor="date_to">Fecha Hasta</Label>
-                                <Input
-                                    id="date_to"
-                                    type="date"
-                                    value={filters.date_to}
-                                    onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                                />
+                            <div className="flex justify-end gap-2 mt-4">
+                                <Button type="button" variant="outline" onClick={handleClearFilters}>
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Limpiar Filtros
+                                </Button>
+                                <Button type="submit">
+                                    <Search className="mr-2 h-4 w-4" />
+                                    Buscar
+                                </Button>
                             </div>
-
-                            {/* Categoría */}
-                            <div className="space-y-2">
-                                <Label htmlFor="category_id">Categoría</Label>
-                                <select
-                                    id="category_id"
-                                    value={filters.category_id}
-                                    onChange={(e) => handleFilterChange('category_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todas</option>
-                                    {categories.map((category) => (
-                                        <option key={category.id} value={category.id}>
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Sucursal */}
-                            <div className="space-y-2">
-                                <Label htmlFor="branch_id">Sucursal</Label>
-                                <select
-                                    id="branch_id"
-                                    value={filters.branch_id}
-                                    onChange={(e) => handleFilterChange('branch_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todas</option>
-                                    {branches.map((branch) => (
-                                        <option key={branch.id} value={branch.id}>
-                                            {branch.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Usuario */}
-                            <div className="space-y-2">
-                                <Label htmlFor="user_id">Usuario</Label>
-                                <select
-                                    id="user_id"
-                                    value={filters.user_id}
-                                    onChange={(e) => handleFilterChange('user_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todos</option>
-                                    {users.map((user) => (
-                                        <option key={user.id} value={user.id}>
-                                            {user.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Método de Pago */}
-                            <div className="space-y-2">
-                                <Label htmlFor="payment_method">Método de Pago</Label>
-                                <select
-                                    id="payment_method"
-                                    value={filters.payment_method}
-                                    onChange={(e) => handleFilterChange('payment_method', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todos</option>
-                                    <option value="efectivo">Efectivo</option>
-                                    <option value="tarjeta">Tarjeta</option>
-                                    <option value="transferencia">Transferencia</option>
-                                </select>
-                            </div>
-
-                            {/* Monto Mínimo */}
-                            <div className="space-y-2">
-                                <Label htmlFor="min_amount">Monto Mínimo</Label>
-                                <Input
-                                    id="min_amount"
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={filters.min_amount}
-                                    onChange={(e) => handleFilterChange('min_amount', e.target.value)}
-                                />
-                            </div>
-
-                            {/* Monto Máximo */}
-                            <div className="space-y-2">
-                                <Label htmlFor="max_amount">Monto Máximo</Label>
-                                <Input
-                                    id="max_amount"
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    value={filters.max_amount}
-                                    onChange={(e) => handleFilterChange('max_amount', e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                            <Button type="submit">
-                                <Search className="mr-2 h-4 w-4" />
-                                Buscar
-                            </Button>
-                            <Button type="button" variant="outline" onClick={handleClearFilters}>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Limpiar Filtros
-                            </Button>
-                        </div>
-                    </form>
+                        </form>
+                    </CardContent>
                 </Card>
 
                 {/* Resumen */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-2">
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Total de Gastos</div>
-                            <div className="text-2xl font-bold">{totals.total_expenses}</div>
+                        <Card className="border-l-4 border-blue-500">
+                            <CardContent className="flex items-center gap-4 py-4">
+                                <div className="rounded-full bg-blue-100 p-3">
+                                    <Hash className="h-6 w-6 text-blue-600" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-muted-foreground">Total de Gastos</div>
+                                    <div className="text-2xl font-bold">{totals.total_expenses}</div>
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Monto Total</div>
-                            <div className="text-2xl font-bold text-red-600">
-                                {formatCurrency(totals.total_amount)}
-                            </div>
+                        <Card className="border-l-4 border-red-500">
+                            <CardContent className="flex items-center gap-4 py-4">
+                                <div className="rounded-full bg-red-100 p-3">
+                                    <DollarSign className="h-6 w-6 text-red-600" />
+                                </div>
+                                <div>
+                                    <div className="text-sm text-muted-foreground">Monto Total</div>
+                                    <div className="text-2xl font-bold text-red-600">
+                                        {formatCurrency(totals.total_amount)}
+                                    </div>
+                                </div>
+                            </CardContent>
                         </Card>
                     </div>
                 )}
 
                 {/* Tabla de Gastos */}
                 <Card>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="border-b bg-muted/50">
-                                <tr>
-                                    <th className="text-left p-4 font-medium">Fecha</th>
-                                    <th className="text-left p-4 font-medium">Descripción</th>
-                                    <th className="text-left p-4 font-medium">Categoría</th>
-                                    <th className="text-left p-4 font-medium">Sucursal</th>
-                                    <th className="text-left p-4 font-medium">Usuario</th>
-                                    <th className="text-right p-4 font-medium">Monto</th>
-                                    <th className="text-center p-4 font-medium">Método Pago</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <CardHeader>
+                        <CardTitle>Detalle de Gastos</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Fecha</TableHead>
+                                    <TableHead>Descripcion</TableHead>
+                                    <TableHead>Categoria</TableHead>
+                                    <TableHead>Sucursal</TableHead>
+                                    <TableHead>Usuario</TableHead>
+                                    <TableHead className="text-right">Monto</TableHead>
+                                    <TableHead className="text-center">Metodo Pago</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {expenses.length > 0 ? (
                                     expenses.map((expense) => (
-                                        <tr key={expense.id} className="border-b hover:bg-muted/50">
-                                            <td className="p-4 text-sm">
+                                        <TableRow key={expense.id}>
+                                            <TableCell className="text-sm">
                                                 {new Date(expense.date).toLocaleDateString('es-PE')}
-                                            </td>
-                                            <td className="p-4">{expense.description}</td>
-                                            <td className="p-4 text-sm">
+                                            </TableCell>
+                                            <TableCell>{expense.description}</TableCell>
+                                            <TableCell className="text-sm">
                                                 <span className="inline-block px-2 py-1 text-xs font-semibold rounded bg-purple-100 text-purple-800">
                                                     {expense.category.name}
                                                 </span>
-                                            </td>
-                                            <td className="p-4 text-sm">{expense.branch.name}</td>
-                                            <td className="p-4 text-sm">{expense.user.name}</td>
-                                            <td className="p-4 text-right font-bold text-red-600">
+                                            </TableCell>
+                                            <TableCell className="text-sm">{expense.branch.name}</TableCell>
+                                            <TableCell className="text-sm">{expense.user.name}</TableCell>
+                                            <TableCell className="text-right font-bold text-red-600">
                                                 {formatCurrency(expense.amount)}
-                                            </td>
-                                            <td className="p-4 text-center text-sm">
+                                            </TableCell>
+                                            <TableCell className="text-center text-sm">
                                                 {expense.payment_method
                                                     ? expense.payment_method.charAt(0).toUpperCase() +
                                                       expense.payment_method.slice(1)
                                                     : '-'}
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ))
                                 ) : (
-                                    <tr>
-                                        <td colSpan={7} className="p-8 text-center text-muted-foreground">
+                                    <TableRow>
+                                        <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
                                             <Receipt className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
                                             No se encontraron gastos con los filtros aplicados
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+                    </CardContent>
                 </Card>
 
-                {/* Análisis por Categoría y Método de Pago */}
+                {/* Analisis por Categoria y Metodo de Pago */}
                 {(totalsByCategory.length > 0 || totalsByPaymentMethod.length > 0) && (
                     <div className="grid gap-4 md:grid-cols-2">
                         {totalsByCategory.length > 0 && (
-                            <Card className="p-6">
-                                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                    <TrendingUp className="h-5 w-5" />
-                                    Gastos por Categoría
-                                </h3>
-                                <div className="space-y-3">
-                                    {totalsByCategory.map((item, index) => (
-                                        <div key={index} className="space-y-1">
-                                            <div className="flex justify-between items-center">
-                                                <div className="font-medium">{item.category}</div>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-sm text-muted-foreground">
-                                                        {item.count} gasto(s)
-                                                    </span>
-                                                    <span className="font-bold">
-                                                        {formatCurrency(item.total)}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        <TrendingUp className="h-5 w-5" />
+                                        Gastos por Categoria
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-3">
+                                        {totalsByCategory.map((item, index) => (
+                                            <div key={index} className="space-y-1">
+                                                <div className="flex justify-between items-center">
+                                                    <div className="font-medium">{item.category}</div>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-sm text-muted-foreground">
+                                                            {item.count} gasto(s)
+                                                        </span>
+                                                        <span className="font-bold">
+                                                            {formatCurrency(item.total)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                                                        <div
+                                                            className="bg-red-600 h-2 rounded-full"
+                                                            style={{ width: `${item.percentage}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-sm font-medium text-red-600">
+                                                        {item.percentage.toFixed(1)}%
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-1 bg-gray-200 rounded-full h-2">
-                                                    <div
-                                                        className="bg-red-600 h-2 rounded-full"
-                                                        style={{ width: `${item.percentage}%` }}
-                                                    ></div>
-                                                </div>
-                                                <span className="text-sm font-medium text-red-600">
-                                                    {item.percentage.toFixed(1)}%
-                                                </span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
                             </Card>
                         )}
 
                         {totalsByPaymentMethod.length > 0 && (
-                            <Card className="p-6">
-                                <h3 className="text-lg font-semibold mb-4">Gastos por Método de Pago</h3>
-                                <div className="space-y-2">
-                                    {totalsByPaymentMethod.map((item, index) => (
-                                        <div
-                                            key={index}
-                                            className="flex justify-between items-center p-2 bg-muted/50 rounded"
-                                        >
-                                            <div>
-                                                <div className="font-medium">
-                                                    {item.method.charAt(0).toUpperCase() + item.method.slice(1)}
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Gastos por Metodo de Pago</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        {totalsByPaymentMethod.map((item, index) => (
+                                            <div
+                                                key={index}
+                                                className="flex justify-between items-center p-2 bg-muted/50 rounded"
+                                            >
+                                                <div>
+                                                    <div className="font-medium">
+                                                        {item.method.charAt(0).toUpperCase() + item.method.slice(1)}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {item.count} gasto(s)
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {item.count} gasto(s)
-                                                </div>
+                                                <div className="font-bold">{formatCurrency(item.total)}</div>
                                             </div>
-                                            <div className="font-bold">{formatCurrency(item.total)}</div>
-                                        </div>
-                                    ))}
-                                </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
                             </Card>
                         )}
                     </div>

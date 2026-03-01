@@ -14,7 +14,7 @@ import {
     RefreshCw,
     AlertCircle,
     Eye,
-    Filter,
+    DollarSign,
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
@@ -121,7 +121,6 @@ export default function ReceivablesReport({
     filters: initialFilters = {},
 }: Props) {
     const [searchTerm, setSearchTerm] = useState(initialFilters.search || '');
-    const [showFilters, setShowFilters] = useState(false);
     const [sortField, setSortField] = useState(initialFilters.sort_field || 'sale_date');
     const [sortDirection, setSortDirection] = useState(initialFilters.sort_direction || 'desc');
     const [filterData, setFilterData] = useState({
@@ -135,7 +134,7 @@ export default function ReceivablesReport({
     const [isGenerating, setIsGenerating] = useState(false);
     const [expandedSales, setExpandedSales] = useState<Set<number>>(new Set());
 
-    // Búsqueda en tiempo real con debounce
+    // Busqueda en tiempo real con debounce
     const debouncedSearch = useDebouncedCallback((value: string) => {
         const params: any = {
             search: value,
@@ -308,145 +307,139 @@ export default function ReceivablesReport({
             <div className="space-y-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Cuentas por Cobrar</h1>
-                        <p className="text-muted-foreground">
-                            Seguimiento de ventas a crédito y pagos pendientes
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <DollarSign className="h-8 w-8 text-primary" />
+                        <div>
+                            <h1 className="text-3xl font-bold">Cuentas por Cobrar</h1>
+                            <p className="text-muted-foreground">
+                                Seguimiento de ventas a credito y pagos pendientes
+                            </p>
+                        </div>
                     </div>
                     <Button
                         onClick={handleGeneratePdf}
                         disabled={isGenerating}
-                        className="bg-red-600 hover:bg-red-700"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
                     >
                         <FileDown className="mr-2 h-4 w-4" />
                         {isGenerating ? 'Generando...' : 'Exportar PDF'}
                     </Button>
                 </div>
 
-                {/* Barra de Búsqueda */}
+                {/* Filtros */}
                 <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <CardHeader>
+                        <CardTitle>Filtros</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Search bar full-width at top */}
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="text"
+                                placeholder="Buscar por numero de venta, cliente, documento..."
+                                value={searchTerm}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+
+                        {/* Filters in 4-column grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="date_from">Fecha Desde</Label>
                                 <Input
-                                    type="text"
-                                    placeholder="Buscar por número de venta, cliente, documento..."
-                                    value={searchTerm}
-                                    onChange={(e) => handleSearchChange(e.target.value)}
-                                    className="pl-10"
+                                    id="date_from"
+                                    type="date"
+                                    value={filterData.date_from}
+                                    onChange={(e) =>
+                                        setFilterData({ ...filterData, date_from: e.target.value })
+                                    }
                                 />
                             </div>
-                            <Button onClick={() => setShowFilters(!showFilters)} variant="outline">
-                                <Filter className="h-4 w-4 mr-2" />
-                                {showFilters ? 'Ocultar Filtros' : 'Filtros Avanzados'}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="date_to">Fecha Hasta</Label>
+                                <Input
+                                    id="date_to"
+                                    type="date"
+                                    value={filterData.date_to}
+                                    onChange={(e) =>
+                                        setFilterData({ ...filterData, date_to: e.target.value })
+                                    }
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="customer_id">Cliente</Label>
+                                <Select
+                                    value={filterData.customer_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, customer_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="customer_id">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todos</SelectItem>
+                                        {customers.map((customer) => (
+                                            <SelectItem key={customer.id} value={customer.id.toString()}>
+                                                {customer.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="branch_id">Sucursal</Label>
+                                <Select
+                                    value={filterData.branch_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, branch_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="branch_id">
+                                        <SelectValue placeholder="Todas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todas</SelectItem>
+                                        {branches.map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                {branch.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Action buttons right-aligned */}
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button onClick={handleFilter}>
+                                <Search className="mr-2 h-4 w-4" />
+                                Aplicar
+                            </Button>
+                            <Button onClick={clearFilters} variant="outline">
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Limpiar
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Filtros Avanzados */}
-                {showFilters && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Filtros Avanzados</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="date_from">Fecha Desde</Label>
-                                    <Input
-                                        id="date_from"
-                                        type="date"
-                                        value={filterData.date_from}
-                                        onChange={(e) =>
-                                            setFilterData({ ...filterData, date_from: e.target.value })
-                                        }
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="date_to">Fecha Hasta</Label>
-                                    <Input
-                                        id="date_to"
-                                        type="date"
-                                        value={filterData.date_to}
-                                        onChange={(e) =>
-                                            setFilterData({ ...filterData, date_to: e.target.value })
-                                        }
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="customer_id">Cliente</Label>
-                                    <Select
-                                        value={filterData.customer_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, customer_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="customer_id">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
-                                            {customers.map((customer) => (
-                                                <SelectItem key={customer.id} value={customer.id.toString()}>
-                                                    {customer.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="branch_id">Sucursal</Label>
-                                    <Select
-                                        value={filterData.branch_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, branch_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="branch_id">
-                                            <SelectValue placeholder="Todas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todas</SelectItem>
-                                            {branches.map((branch) => (
-                                                <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                    {branch.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 mt-4">
-                                <Button onClick={handleFilter}>
-                                    <Search className="mr-2 h-4 w-4" />
-                                    Aplicar Filtros
-                                </Button>
-                                <Button onClick={clearFilters} variant="outline">
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Limpiar
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                )}
-
                 {/* Resumen */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                        <Card>
+                        <Card className="border-l-4 border-blue-500">
                             <CardContent className="pt-5 pb-4">
-                                <div className="text-sm text-muted-foreground">Ventas a Crédito</div>
+                                <div className="text-sm text-muted-foreground">Ventas a Credito</div>
                                 <div className="text-2xl font-bold">{totals.total_sales}</div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-slate-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Total Vendido</div>
                                 <div className="text-2xl font-bold">
@@ -454,7 +447,7 @@ export default function ReceivablesReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-green-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Total Cobrado</div>
                                 <div className="text-2xl font-bold text-green-600">
@@ -462,7 +455,7 @@ export default function ReceivablesReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-indigo-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Por Cobrar</div>
                                 <div className="text-2xl font-bold text-blue-600">
@@ -470,9 +463,9 @@ export default function ReceivablesReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-red-50">
+                        <Card className="border-l-4 border-red-500 bg-red-50 dark:bg-red-950">
                             <CardContent className="pt-5 pb-4">
-                                <div className="text-sm text-red-800">Vencido</div>
+                                <div className="text-sm text-red-800 dark:text-red-200">Vencido</div>
                                 <div className="text-2xl font-bold text-red-600">
                                     {formatCurrency(totals.total_overdue)}
                                 </div>
@@ -483,12 +476,12 @@ export default function ReceivablesReport({
 
                 {/* Alerta */}
                 {totals && totals.total_overdue > 0 && (
-                    <div className="bg-red-50 border-l-4 border-red-400 p-4">
+                    <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-4">
                         <div className="flex">
                             <AlertCircle className="h-5 w-5 text-red-400" />
                             <div className="ml-3">
                                 <p className="text-sm text-red-700">
-                                    <strong>¡Atención!</strong> Hay {formatCurrency(totals.total_overdue)} en
+                                    <strong>Atencion!</strong> Hay {formatCurrency(totals.total_overdue)} en
                                     cuentas vencidas. Se recomienda contactar a los clientes para gestionar el
                                     cobro.
                                 </p>
@@ -610,11 +603,11 @@ export default function ReceivablesReport({
                                                                 item.max_days_overdue
                                                             )}
                                                         >
-                                                            {item.max_days_overdue} días atraso
+                                                            {item.max_days_overdue} dias atraso
                                                         </Badge>
                                                     ) : (
                                                         <Badge variant="outline" className="text-green-600 border-green-600">
-                                                            Al día
+                                                            Al dia
                                                         </Badge>
                                                     )}
                                                 </TableCell>
@@ -714,7 +707,7 @@ export default function ReceivablesReport({
                             </TableBody>
                         </Table>
 
-                        {/* Paginación */}
+                        {/* Paginacion */}
                         {sales?.data && sales.data.length > 0 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t">
                                 <div className="text-sm text-muted-foreground">

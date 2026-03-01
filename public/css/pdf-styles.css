@@ -1,584 +1,433 @@
 /* ============================================
    ESTILOS PARA PDFs - Sistema Ferretería
+   Diseño limpio B&W - Compatible con DomPDF
    ============================================ */
 
-/* Variables CSS */
-:root {
-    --primary: #2563eb;
-    --primary-dark: #1e40af;
-    --secondary: #64748b;
-    --success: #10b981;
-    --warning: #f59e0b;
-    --danger: #ef4444;
-    --light: #f8fafc;
-    --light-gray: #f1f5f9;
-    --medium-gray: #e2e8f0;
-    --dark: #1e293b;
-    --border: #cbd5e1;
+@page {
+    margin: 10mm;
 }
 
-/* Reset y Base */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    font-family: 'DejaVu Sans', 'Arial', sans-serif;
-    font-size: 9pt;
-    color: var(--dark);
+    font-family: 'DejaVu Sans', Arial, sans-serif;
+    font-size: 8pt;
+    color: #222222;
     line-height: 1.4;
 }
 
-/* Tipografía */
-h1 {
-    font-size: 20pt;
-    font-weight: bold;
-    color: var(--primary-dark);
-    margin-bottom: 5px;
+.page-border {
+    border: 1.5px solid #333333;
+    padding: 12px 14px;
 }
 
 h2 {
-    font-size: 14pt;
+    font-size: 9pt;
     font-weight: bold;
-    color: var(--dark);
-    margin: 15px 0 8px 0;
-    padding-bottom: 5px;
-    border-bottom: 2px solid var(--primary);
+    color: #111111;
+    margin: 10px 0 5px 0;
+    padding-bottom: 3px;
+    border-bottom: 1.5px solid #333333;
 }
 
 h3 {
-    font-size: 11pt;
+    font-size: 8.5pt;
     font-weight: bold;
-    color: var(--dark);
-    margin: 10px 0 5px 0;
+    color: #222222;
+    margin: 8px 0 4px 0;
 }
 
-.text-small {
-    font-size: 7pt;
-}
-
-.text-muted {
-    color: var(--secondary);
-}
-
-.text-bold {
-    font-weight: bold;
-}
-
-.text-center {
-    text-align: center;
-}
-
-.text-right {
-    text-align: right;
-}
-
-/* Header Corporativo */
+/* ============================================
+   HEADER CORPORATIVO
+   ============================================ */
 .header-corporate {
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-    color: white;
-    padding: 15px;
-    margin-bottom: 20px;
-    border-radius: 5px;
+    border-bottom: 2px solid #222222;
+    padding: 8px 0;
+    margin-bottom: 10px;
 }
 
-.header-corporate .logo {
-    width: 80px;
-    height: auto;
-    float: left;
-    margin-right: 15px;
-}
-
-.header-corporate .company-info {
-    overflow: hidden;
-}
-
-.header-corporate .company-name {
-    font-size: 16pt;
+.company-name {
+    font-size: 13pt;
     font-weight: bold;
-    margin-bottom: 3px;
+    color: #111111;
+    margin-bottom: 1px;
 }
 
-.header-corporate .company-details {
-    font-size: 8pt;
-    line-height: 1.5;
+.company-details {
+    font-size: 7pt;
+    line-height: 1.4;
+    color: #444444;
 }
 
-/* Report Title Section */
+/* ============================================
+   TITULO DEL REPORTE
+   ============================================ */
 .report-title-section {
-    background-color: var(--light);
-    padding: 12px;
-    margin-bottom: 15px;
-    border-left: 4px solid var(--primary);
-    border-radius: 3px;
+    padding: 6px 0;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #cccccc;
 }
 
 .report-title {
-    font-size: 16pt;
+    font-size: 11pt;
     font-weight: bold;
-    color: var(--primary-dark);
-    margin-bottom: 5px;
+    color: #111111;
 }
 
 .report-subtitle {
-    font-size: 9pt;
-    color: var(--secondary);
+    font-size: 7pt;
+    color: #666666;
+    margin-top: 2px;
 }
 
-/* Filters Section */
+/* ============================================
+   FILTROS
+   ============================================ */
 .filters-section {
-    background-color: #fef3c7;
-    border: 1px solid #fbbf24;
-    padding: 10px;
-    margin-bottom: 15px;
-    border-radius: 3px;
+    background-color: #f5f5f5;
+    border: 1px solid #dddddd;
+    padding: 5px 8px;
+    margin-bottom: 10px;
+    font-size: 7pt;
 }
 
 .filters-title {
-    font-size: 9pt;
+    font-size: 6.5pt;
     font-weight: bold;
-    color: #92400e;
-    margin-bottom: 5px;
+    color: #444444;
+    margin-bottom: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .filter-item {
     display: inline-block;
-    margin-right: 15px;
-    margin-bottom: 3px;
-    font-size: 8pt;
+    margin-right: 14px;
+    font-size: 7pt;
 }
 
-.filter-label {
-    font-weight: bold;
-    color: #78350f;
-}
+.filter-label { font-weight: bold; color: #444444; }
+.filter-value { color: #111111; }
 
-.filter-value {
-    color: #451a03;
-}
-
-/* Tablas */
-table {
+/* ============================================
+   RESUMEN CON TARJETAS (tabla HTML)
+   ============================================ */
+.stats-table {
     width: 100%;
     border-collapse: collapse;
-    margin: 10px 0;
-    font-size: 8pt;
-}
-
-table.table-bordered {
-    border: 1px solid var(--border);
-}
-
-/* Cabecera de tabla */
-thead {
-    background-color: var(--primary);
-    color: white;
-}
-
-thead th {
-    padding: 8px 6px;
-    text-align: left;
-    font-weight: bold;
-    font-size: 8pt;
-    border-right: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-thead th:last-child {
-    border-right: none;
-}
-
-thead th.text-center {
-    text-align: center;
-}
-
-thead th.text-right {
-    text-align: right;
-}
-
-/* Cuerpo de tabla */
-tbody tr {
-    border-bottom: 1px solid var(--medium-gray);
-}
-
-tbody tr:nth-child(even) {
-    background-color: var(--light);
-}
-
-tbody tr:hover {
-    background-color: #e0f2fe;
-}
-
-tbody td {
-    padding: 6px;
-    border-right: 1px solid var(--medium-gray);
-}
-
-tbody td:last-child {
-    border-right: none;
-}
-
-/* Pie de tabla (totales) */
-tfoot {
-    background-color: var(--light-gray);
-    font-weight: bold;
-    border-top: 2px solid var(--primary);
-}
-
-tfoot td {
-    padding: 8px 6px;
-    font-size: 9pt;
-}
-
-/* Tabla sin bordes internos */
-table.table-clean tbody td {
-    border: none;
-}
-
-/* Tabla compacta */
-table.table-compact {
-    font-size: 7pt;
-}
-
-table.table-compact thead th,
-table.table-compact tbody td,
-table.table-compact tfoot td {
-    padding: 4px;
-}
-
-/* Resumen Ejecutivo */
-.summary-box {
-    background-color: var(--light);
-    border: 2px solid var(--primary);
-    border-radius: 5px;
-    padding: 12px;
-    margin: 15px 0;
-}
-
-.summary-title {
-    font-size: 12pt;
-    font-weight: bold;
-    color: var(--primary-dark);
     margin-bottom: 10px;
+}
+
+.stats-table td {
+    border: 1px solid #cccccc;
+    padding: 6px 8px;
     text-align: center;
-}
-
-.summary-grid {
-    display: table;
-    width: 100%;
-}
-
-.summary-row {
-    display: table-row;
-}
-
-.summary-label {
-    display: table-cell;
-    padding: 5px 10px;
-    font-weight: bold;
-    color: var(--dark);
-    border-bottom: 1px solid var(--medium-gray);
-}
-
-.summary-value {
-    display: table-cell;
-    padding: 5px 10px;
-    text-align: right;
-    border-bottom: 1px solid var(--medium-gray);
-}
-
-.summary-value.highlight {
-    font-size: 11pt;
-    font-weight: bold;
-    color: var(--primary);
-}
-
-/* Alertas y Estados */
-.badge {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 3px;
-    font-size: 7pt;
-    font-weight: bold;
-    text-align: center;
-}
-
-.badge-success {
-    background-color: #d1fae5;
-    color: #065f46;
-}
-
-.badge-warning {
-    background-color: #fef3c7;
-    color: #92400e;
-}
-
-.badge-danger {
-    background-color: #fee2e2;
-    color: #991b1b;
-}
-
-.badge-info {
-    background-color: #dbeafe;
-    color: #1e40af;
-}
-
-.badge-secondary {
-    background-color: var(--medium-gray);
-    color: var(--dark);
-}
-
-/* Estados de Stock */
-.stock-normal {
-    color: var(--success);
-    font-weight: bold;
-}
-
-.stock-low {
-    color: var(--warning);
-    font-weight: bold;
-}
-
-.stock-out {
-    color: var(--danger);
-    font-weight: bold;
-}
-
-/* Alertas */
-.alert {
-    padding: 10px;
-    border-radius: 3px;
-    margin: 10px 0;
-    font-size: 8pt;
-}
-
-.alert-warning {
-    background-color: #fef3c7;
-    border: 1px solid #fbbf24;
-    color: #78350f;
-}
-
-.alert-danger {
-    background-color: #fee2e2;
-    border: 1px solid #f87171;
-    color: #7f1d1d;
-}
-
-.alert-info {
-    background-color: #dbeafe;
-    border: 1px solid #60a5fa;
-    color: #1e3a8a;
-}
-
-/* Grid de 2 columnas */
-.grid-2 {
-    display: table;
-    width: 100%;
-}
-
-.grid-2 .col {
-    display: table-cell;
-    width: 50%;
-    padding: 5px;
     vertical-align: top;
 }
 
-/* Info Box */
+.stat-label {
+    font-size: 6.5pt;
+    font-weight: bold;
+    color: #666666;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.stat-value {
+    font-size: 11pt;
+    font-weight: bold;
+    color: #111111;
+    padding: 2px 0;
+}
+
+.stat-sub {
+    font-size: 6pt;
+    color: #888888;
+}
+
+/* Colores de borde superior para stat cards */
+.stats-table td.primary { border-top: 2.5px solid #333333; }
+.stats-table td.success { border-top: 2.5px solid #333333; }
+.stats-table td.warning { border-top: 2.5px solid #666666; }
+.stats-table td.danger  { border-top: 2.5px solid #666666; }
+.stats-table td.info    { border-top: 2.5px solid #999999; }
+
+/* ============================================
+   SUMMARY BOX
+   ============================================ */
+.summary-box {
+    border: 1px solid #cccccc;
+    padding: 6px 8px;
+    margin-bottom: 8px;
+}
+
+.summary-title {
+    font-size: 8pt;
+    font-weight: bold;
+    color: #111111;
+    margin-bottom: 5px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid #dddddd;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.summary-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.summary-table td {
+    padding: 3px 6px;
+    font-size: 7.5pt;
+    border-bottom: 1px solid #eeeeee;
+}
+
+.summary-table td:first-child {
+    font-weight: bold;
+    color: #333333;
+    width: 50%;
+}
+
+.summary-table td:last-child {
+    text-align: right;
+}
+
+/* ============================================
+   TABLAS DE DATOS
+   ============================================ */
+table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 6px 0;
+    font-size: 7pt;
+}
+
+table.data-table thead th {
+    background-color: #333333;
+    color: white;
+    padding: 4px 5px;
+    text-align: left;
+    font-weight: bold;
+    font-size: 6.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+}
+
+table.data-table tbody tr {
+    border-bottom: 1px solid #dddddd;
+}
+
+table.data-table tbody tr:nth-child(even) {
+    background-color: #f8f8f8;
+}
+
+table.data-table tbody td {
+    padding: 3px 5px;
+    vertical-align: middle;
+}
+
+table.data-table tfoot td {
+    padding: 4px 5px;
+    font-weight: bold;
+    font-size: 7.5pt;
+    background-color: #eeeeee;
+    border-top: 1.5px solid #333333;
+}
+
+/* Tabla compatible */
+table.table-bordered { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 7pt; }
+table.table-bordered thead th { background-color: #333333; color: white; padding: 4px 5px; text-align: left; font-weight: bold; font-size: 6.5pt; text-transform: uppercase; }
+table.table-bordered tbody tr { border-bottom: 1px solid #dddddd; }
+table.table-bordered tbody tr:nth-child(even) { background-color: #f8f8f8; }
+table.table-bordered tbody td { padding: 3px 5px; }
+table.table-bordered tfoot td { padding: 4px 5px; font-weight: bold; background-color: #eeeeee; border-top: 1.5px solid #333333; }
+table.table-compact { font-size: 6.5pt; }
+table.table-compact thead th, table.table-compact tbody td, table.table-compact tfoot td { padding: 2px 4px; }
+
+/* Table clean */
+table.table-clean { width: 100%; border-collapse: collapse; font-size: 6.5pt; }
+table.table-clean thead th { background-color: #eeeeee; padding: 2px 4px; text-align: left; font-weight: bold; font-size: 6pt; color: #333333; }
+table.table-clean tbody td { padding: 2px 4px; border-bottom: 1px solid #eeeeee; }
+thead.bg-light th { background-color: #eeeeee; color: #333333; }
+
+/* ============================================
+   INFO BOX
+   ============================================ */
 .info-box {
-    background-color: white;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    padding: 10px;
-    margin-bottom: 10px;
+    border: 1px solid #cccccc;
+    margin-bottom: 6px;
 }
 
 .info-box-header {
-    font-size: 9pt;
+    font-size: 7pt;
     font-weight: bold;
-    color: var(--primary);
-    margin-bottom: 5px;
-    padding-bottom: 3px;
-    border-bottom: 1px solid var(--medium-gray);
+    color: #222222;
+    padding: 4px 8px;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #cccccc;
 }
 
 .info-box-content {
-    font-size: 8pt;
+    padding: 5px 8px;
+    font-size: 7pt;
 }
 
 .info-row {
-    padding: 3px 0;
+    padding: 2px 0;
+    border-bottom: 1px solid #f0f0f0;
 }
 
 .info-label {
     display: inline-block;
-    width: 40%;
+    width: 45%;
     font-weight: bold;
-    color: var(--secondary);
+    color: #444444;
+    font-size: 7pt;
 }
 
 .info-value {
     display: inline-block;
-    width: 59%;
-    color: var(--dark);
+    width: 54%;
+    font-size: 7pt;
 }
 
-/* Totales destacados */
-.total-line {
-    border-top: 2px solid var(--primary);
-    padding-top: 8px;
-    margin-top: 5px;
+/* Layout columnas */
+.two-col { width: 100%; border-collapse: collapse; }
+.two-col > tbody > tr > td { width: 50%; vertical-align: top; padding: 0 4px; }
+
+.three-col { width: 100%; border-collapse: collapse; }
+.three-col > tbody > tr > td { width: 33.33%; vertical-align: top; padding: 0 3px; }
+
+/* ============================================
+   BADGES
+   ============================================ */
+.badge {
+    display: inline-block;
+    padding: 1px 5px;
+    font-size: 6pt;
     font-weight: bold;
-    font-size: 10pt;
+    text-align: center;
+    border: 1px solid #999999;
 }
 
+.badge-success { background-color: #f0f0f0; color: #222222; }
+.badge-warning { background-color: #f5f5f5; color: #222222; }
+.badge-danger  { background-color: #e8e8e8; color: #222222; border-color: #666666; }
+.badge-info    { background-color: #f0f0f0; color: #333333; }
+.badge-secondary { background-color: #f5f5f5; color: #444444; }
+.badge-primary { background-color: #eeeeee; color: #222222; }
+
+/* ============================================
+   ALERTAS
+   ============================================ */
+.alert {
+    padding: 5px 10px;
+    margin: 6px 0;
+    font-size: 7pt;
+    border: 1px solid #cccccc;
+    border-left: 3px solid #666666;
+}
+
+.alert-warning { border-left-color: #666666; }
+.alert-danger  { border-left-color: #333333; font-weight: bold; }
+.alert-info    { border-left-color: #999999; }
+.alert-success { border-left-color: #999999; }
+
+/* ============================================
+   GRAND TOTAL
+   ============================================ */
 .grand-total {
-    background-color: var(--primary);
+    background-color: #333333;
     color: white;
-    padding: 10px;
-    font-size: 11pt;
+    padding: 5px 10px;
+    font-size: 9pt;
     font-weight: bold;
     text-align: right;
-    border-radius: 3px;
-    margin-top: 10px;
+    margin-top: 5px;
 }
 
-/* Footer */
+/* ============================================
+   STOCK
+   ============================================ */
+.stock-normal { font-weight: bold; }
+.stock-low    { font-weight: bold; font-style: italic; }
+.stock-out    { font-weight: bold; text-decoration: underline; }
+
+/* ============================================
+   FOOTER
+   ============================================ */
 .footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 30px;
-    border-top: 1px solid var(--border);
-    padding: 5px 15px;
-    font-size: 7pt;
-    color: var(--secondary);
-    background-color: white;
-}
-
-.footer-left {
-    float: left;
-}
-
-.footer-center {
+    border-top: 1px solid #cccccc;
+    padding: 5px 0;
+    margin-top: 12px;
+    font-size: 6.5pt;
+    color: #888888;
     text-align: center;
 }
 
-.footer-right {
-    float: right;
-}
+/* ============================================
+   FIRMA
+   ============================================ */
+.signature-section { margin-top: 25px; page-break-inside: avoid; }
+.signature-box { display: inline-block; width: 45%; text-align: center; margin: 10px 2%; }
+.signature-line { border-top: 1px solid #333333; margin-top: 35px; padding-top: 4px; }
+.signature-label { font-size: 7pt; font-weight: bold; color: #333333; }
 
-/* Page break */
-.page-break {
-    page-break-after: always;
-}
+/* ============================================
+   CONTEO DE BILLETES
+   ============================================ */
+.money-count-table { width: 100%; margin: 5px 0; }
+.money-count-table th, .money-count-table td { padding: 3px 5px; border: 1px solid #cccccc; text-align: center; font-size: 7pt; }
+.money-count-table thead th { background-color: #eeeeee; font-weight: bold; font-size: 6.5pt; }
+.money-count-table .denomination { text-align: left; font-weight: bold; }
 
-.page-break-before {
-    page-break-before: always;
-}
+/* ============================================
+   PROGRESS BAR
+   ============================================ */
+.progress-bar { width: 100%; height: 4px; background-color: #dddddd; }
+.progress-fill { height: 100%; background-color: #666666; }
 
-.no-page-break {
-    page-break-inside: avoid;
-}
+/* ============================================
+   PAGE BREAKS
+   ============================================ */
+.page-break { page-break-after: always; }
+.page-break-before { page-break-before: always; }
+.no-page-break { page-break-inside: avoid; }
 
-/* Firma */
-.signature-section {
-    margin-top: 40px;
-    page-break-inside: avoid;
-}
+/* ============================================
+   UTILIDADES
+   ============================================ */
+.text-small { font-size: 6.5pt; }
+.text-xs { font-size: 6pt; }
+.text-muted { color: #888888; }
+.text-bold { font-weight: bold; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
 
-.signature-box {
-    display: inline-block;
-    width: 45%;
-    text-align: center;
-    margin: 20px 2%;
-    vertical-align: top;
-}
+.text-primary { color: #222222; font-weight: bold; }
+.text-success { color: #222222; }
+.text-warning { color: #444444; }
+.text-danger  { color: #222222; font-weight: bold; }
+.text-info    { color: #444444; }
 
-.signature-line {
-    border-top: 1px solid var(--dark);
-    margin-top: 50px;
-    padding-top: 5px;
-}
+.currency { font-weight: bold; }
 
-.signature-label {
-    font-size: 8pt;
-    font-weight: bold;
-    color: var(--secondary);
-}
+.p-0 { padding: 0; }
+.mt-5 { margin-top: 5px; }
+.mt-10 { margin-top: 8px; }
+.mt-15 { margin-top: 12px; }
+.mb-5 { margin-bottom: 4px; }
+.mb-10 { margin-bottom: 8px; }
+.mb-15 { margin-bottom: 12px; }
+.no-border td { border: none; }
 
-/* Tabla de conteo de billetes (para arqueo) */
-.money-count-table {
-    width: 100%;
-    margin: 15px 0;
-}
-
-.money-count-table th,
-.money-count-table td {
-    padding: 6px;
-    border: 1px solid var(--border);
-    text-align: center;
-}
-
-.money-count-table thead {
-    background-color: var(--light-gray);
-}
-
-.money-count-table .denomination {
-    text-align: left;
-    font-weight: bold;
-}
-
-.money-count-table .count-box {
-    background-color: white;
-    border: 1px solid var(--border);
-    width: 60px;
-    height: 20px;
-}
-
-/* Utilidades */
-.mt-10 { margin-top: 10px; }
-.mt-15 { margin-top: 15px; }
-.mt-20 { margin-top: 20px; }
-.mb-10 { margin-bottom: 10px; }
-.mb-15 { margin-bottom: 15px; }
-.mb-20 { margin-bottom: 20px; }
-.p-10 { padding: 10px; }
-.p-15 { padding: 15px; }
-
-/* Colores de texto */
-.text-primary { color: var(--primary); }
-.text-success { color: var(--success); }
-.text-warning { color: var(--warning); }
-.text-danger { color: var(--danger); }
-.text-secondary { color: var(--secondary); }
-
-/* Backgrounds */
-.bg-light { background-color: var(--light); }
-.bg-primary { background-color: var(--primary); color: white; }
-.bg-success { background-color: var(--success); color: white; }
-
-/* Bordes */
-.border { border: 1px solid var(--border); }
-.border-top { border-top: 1px solid var(--border); }
-.border-bottom { border-bottom: 1px solid var(--border); }
-.border-primary { border-color: var(--primary); }
-
-/* Moneda */
-.currency {
-    font-family: 'Courier New', monospace;
-    font-weight: bold;
-}
-
-/* Watermark (para reportes anulados) */
-.watermark {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    font-size: 72pt;
-    color: rgba(239, 68, 68, 0.1);
-    font-weight: bold;
-    z-index: -1;
+.footnote {
+    font-size: 6.5pt;
+    color: #888888;
+    border-top: 1px solid #eeeeee;
+    padding-top: 4px;
+    margin-top: 8px;
 }

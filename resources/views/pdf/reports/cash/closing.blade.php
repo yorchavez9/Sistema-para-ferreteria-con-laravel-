@@ -2,101 +2,95 @@
 
 @section('content')
 
-{{-- Información de la Sesión --}}
-<div class="info-box mb-15">
-    <div class="info-box-header">INFORMACIÓN DE LA SESIÓN</div>
-    <div class="info-box-content">
-        <div class="grid-2">
-            <div class="col">
-                <div class="info-row">
-                    <span class="info-label">N° de Sesión:</span>
-                    <span class="info-value text-bold">#{{ $session->id }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Caja:</span>
-                    <span class="info-value">{{ $session->cashRegister->name }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Sucursal:</span>
-                    <span class="info-value">{{ $session->cashRegister->branch->name ?? 'N/A' }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Cajero:</span>
-                    <span class="info-value">{{ $session->user->name }}</span>
-                </div>
-            </div>
-            <div class="col">
-                <div class="info-row">
-                    <span class="info-label">Fecha Apertura:</span>
-                    <span class="info-value">{{ \Carbon\Carbon::parse($session->opened_at)->format('d/m/Y H:i') }}</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Fecha Cierre:</span>
-                    <span class="info-value">
-                        @if($session->closed_at)
-                            {{ \Carbon\Carbon::parse($session->closed_at)->format('d/m/Y H:i') }}
-                        @else
-                            <span class="text-warning">Aún Abierta</span>
-                        @endif
-                    </span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Duración:</span>
-                    <span class="info-value">
-                        @if($session->closed_at)
-                            @php
-                                $duration = \Carbon\Carbon::parse($session->opened_at)->diff(\Carbon\Carbon::parse($session->closed_at));
-                            @endphp
+@php
+    $totalIngresos = $session->movements->whereIn('type', ['ingreso', 'venta', 'pago_credito', 'transferencia_entrada'])->where('payment_method', 'efectivo')->sum('amount');
+    $totalEgresos = $session->movements->whereIn('type', ['egreso', 'compra', 'gasto', 'transferencia_salida'])->where('payment_method', 'efectivo')->sum('amount');
+    $expectedBalance = $session->expected_balance ?? $session->calculateExpectedBalance();
+@endphp
+
+{{-- Info de Sesion + Resumen en 2 columnas --}}
+<table class="two-col">
+    <tr>
+        <td>
+            <div class="summary-box">
+                <div class="summary-title">Sesion #{{ $session->id }}</div>
+                <table class="summary-table">
+                    <tr><td>Caja:</td><td>{{ $session->cashRegister->name }}</td></tr>
+                    <tr><td>Sucursal:</td><td>{{ $session->cashRegister->branch->name ?? 'N/A' }}</td></tr>
+                    <tr><td>Cajero:</td><td class="text-bold">{{ $session->user->name }}</td></tr>
+                    <tr><td>Apertura:</td><td>{{ \Carbon\Carbon::parse($session->opened_at)->format('d/m/Y H:i') }}</td></tr>
+                    <tr>
+                        <td>Cierre:</td>
+                        <td>
+                            @if($session->closed_at)
+                                {{ \Carbon\Carbon::parse($session->closed_at)->format('d/m/Y H:i') }}
+                            @else
+                                <span class="badge badge-warning">Abierta</span>
+                            @endif
+                        </td>
+                    </tr>
+                    @if($session->closed_at)
+                    <tr>
+                        <td>Duracion:</td>
+                        <td>
+                            @php $duration = \Carbon\Carbon::parse($session->opened_at)->diff(\Carbon\Carbon::parse($session->closed_at)); @endphp
                             {{ $duration->h }}h {{ $duration->i }}m
-                        @else
-                            -
-                        @endif
-                    </span>
-                </div>
+                        </td>
+                    </tr>
+                    @endif
+                </table>
             </div>
-        </div>
-    </div>
-</div>
+        </td>
+        <td>
+            <div class="summary-box">
+                <div class="summary-title">Resumen de Caja</div>
+                <table class="summary-table">
+                    <tr><td>Saldo Inicial:</td><td class="currency">S/ {{ number_format($session->opening_balance, 2) }}</td></tr>
+                    <tr><td class="text-success">Total Ingresos:</td><td class="currency text-success">S/ {{ number_format($totalIngresos, 2) }}</td></tr>
+                    <tr><td class="text-danger">Total Egresos:</td><td class="currency text-danger">S/ {{ number_format($totalEgresos, 2) }}</td></tr>
+                    <tr><td class="text-bold">Saldo Esperado:</td><td class="currency text-bold">S/ {{ number_format($expectedBalance, 2) }}</td></tr>
+                    <tr>
+                        <td class="text-bold">Saldo Real:</td>
+                        <td class="currency text-bold">
+                            @if($session->actual_balance !== null)
+                                S/ {{ number_format($session->actual_balance, 2) }}
+                            @else
+                                ___________
+                            @endif
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="text-bold">DIFERENCIA:</td>
+                        <td class="currency text-bold {{ ($session->difference ?? 0) > 0 ? 'text-success' : (($session->difference ?? 0) < 0 ? 'text-danger' : '') }}">
+                            @if($session->difference !== null)
+                                S/ {{ number_format($session->difference, 2) }}
+                                @if($session->difference > 0)
+                                    <span class="badge badge-success">Sobrante</span>
+                                @elseif($session->difference < 0)
+                                    <span class="badge badge-danger">Faltante</span>
+                                @else
+                                    <span class="badge badge-success">OK</span>
+                                @endif
+                            @else
+                                ___________
+                            @endif
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </td>
+    </tr>
+</table>
 
-{{-- Resumen de Movimientos --}}
-<div class="summary-box">
-    <div class="summary-title">RESUMEN DE CAJA</div>
-    <div class="summary-grid">
-        <div class="summary-row">
-            <div class="summary-label">Saldo Inicial:</div>
-            <div class="summary-value">S/ {{ number_format($session->opening_balance, 2) }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">(+) Total Ingresos:</div>
-            <div class="summary-value text-success">
-                S/ {{ number_format($session->movements->whereIn('type', ['ingreso', 'venta', 'pago_credito', 'transferencia_entrada'])->where('payment_method', 'efectivo')->sum('amount'), 2) }}
-            </div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">(-) Total Egresos:</div>
-            <div class="summary-value text-danger">
-                S/ {{ number_format($session->movements->whereIn('type', ['egreso', 'compra', 'gasto', 'transferencia_salida'])->where('payment_method', 'efectivo')->sum('amount'), 2) }}
-            </div>
-        </div>
-        <div class="summary-row border-top">
-            <div class="summary-label text-bold">Saldo Esperado:</div>
-            <div class="summary-value highlight">
-                S/ {{ number_format($session->expected_balance ?? $session->calculateExpectedBalance(), 2) }}
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- Desglose por Método de Pago --}}
-<h2>Desglose por Método de Pago</h2>
-
-<table class="table-bordered">
+{{-- Desglose por Metodo de Pago --}}
+<h2>Desglose por Metodo de Pago</h2>
+<table class="table-bordered table-compact">
     <thead>
         <tr>
-            <th style="width: 30%;">Método de Pago</th>
-            <th class="text-right" style="width: 23%;">Ingresos</th>
-            <th class="text-right" style="width: 23%;">Egresos</th>
-            <th class="text-right" style="width: 24%;">Neto</th>
+            <th style="width: 35%;">Metodo</th>
+            <th class="text-right" style="width: 22%;">Ingresos</th>
+            <th class="text-right" style="width: 22%;">Egresos</th>
+            <th class="text-right" style="width: 21%;">Neto</th>
         </tr>
     </thead>
     <tbody>
@@ -112,150 +106,74 @@
     <tfoot>
         <tr>
             <td class="text-right text-bold">TOTALES:</td>
-            <td class="text-right currency text-bold text-success">
-                S/ {{ number_format($movementsByPaymentMethod->sum('ingresos'), 2) }}
-            </td>
-            <td class="text-right currency text-bold text-danger">
-                S/ {{ number_format($movementsByPaymentMethod->sum('egresos'), 2) }}
-            </td>
-            <td class="text-right currency text-bold">
-                S/ {{ number_format($movementsByPaymentMethod->sum('neto'), 2) }}
+            <td class="text-right currency text-bold text-success">S/ {{ number_format($movementsByPaymentMethod->sum('ingresos'), 2) }}</td>
+            <td class="text-right currency text-bold text-danger">S/ {{ number_format($movementsByPaymentMethod->sum('egresos'), 2) }}</td>
+            <td class="text-right currency text-bold">S/ {{ number_format($movementsByPaymentMethod->sum('neto'), 2) }}</td>
+        </tr>
+    </tfoot>
+</table>
+
+{{-- Conteo de Billetes y Monedas --}}
+<h2>Conteo de Billetes y Monedas</h2>
+<table class="table-bordered table-compact">
+    <thead>
+        <tr>
+            <th style="width: 18%;">Denominacion</th>
+            <th class="text-center" style="width: 15%;">Cantidad</th>
+            <th class="text-right" style="width: 17%;">Subtotal</th>
+            <th style="width: 18%;">Denominacion</th>
+            <th class="text-center" style="width: 15%;">Cantidad</th>
+            <th class="text-right" style="width: 17%;">Subtotal</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="text-bold">S/ 200</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+            <td class="text-bold">S/ 5</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+        </tr>
+        <tr>
+            <td class="text-bold">S/ 100</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+            <td class="text-bold">S/ 2</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+        </tr>
+        <tr>
+            <td class="text-bold">S/ 50</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+            <td class="text-bold">S/ 1</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+        </tr>
+        <tr>
+            <td class="text-bold">S/ 20</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+            <td class="text-bold">S/ 0.50</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+        </tr>
+        <tr>
+            <td class="text-bold">S/ 10</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+            <td class="text-bold">S/ 0.20/0.10</td><td class="text-center">_______</td><td class="text-right">S/ ________</td>
+        </tr>
+    </tbody>
+    <tfoot>
+        <tr>
+            <td colspan="6" class="text-center text-bold" style="font-size: 9pt;">
+                TOTAL CONTADO: S/ __________________
             </td>
         </tr>
     </tfoot>
 </table>
 
-{{-- Tabla de Conteo de Billetes y Monedas (Solo para Efectivo) --}}
-<div class="page-break-before"></div>
-
-<h2>Conteo de Billetes y Monedas</h2>
-
-<table class="money-count-table">
-    <thead>
-        <tr>
-            <th class="text-left">Denominación</th>
-            <th>Cantidad</th>
-            <th class="text-right">Subtotal</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td class="denomination">S/ 200.00</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 100.00</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 50.00</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 20.00</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 10.00</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 5.00</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 2.00</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 1.00</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 0.50</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 0.20</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr>
-            <td class="denomination">S/ 0.10</td>
-            <td class="text-center">___________</td>
-            <td class="text-right">S/ __________</td>
-        </tr>
-        <tr class="bg-light">
-            <td colspan="2" class="text-right text-bold">TOTAL CONTADO:</td>
-            <td class="text-right text-bold">S/ __________</td>
-        </tr>
-    </tbody>
-</table>
-
-{{-- Cuadro de Diferencia --}}
-<div class="summary-box mt-15">
-    <div class="summary-title">CUADRE DE CAJA</div>
-    <div class="summary-grid">
-        <div class="summary-row">
-            <div class="summary-label">Saldo Esperado (Sistema):</div>
-            <div class="summary-value">
-                S/ {{ number_format($session->expected_balance ?? $session->calculateExpectedBalance(), 2) }}
-            </div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">Saldo Contado (Real):</div>
-            <div class="summary-value">
-                @if($session->actual_balance !== null)
-                    S/ {{ number_format($session->actual_balance, 2) }}
-                @else
-                    S/ __________
-                @endif
-            </div>
-        </div>
-        <div class="summary-row border-top">
-            <div class="summary-label text-bold">DIFERENCIA:</div>
-            <div class="summary-value highlight {{ ($session->difference ?? 0) > 0 ? 'text-success' : (($session->difference ?? 0) < 0 ? 'text-danger' : '') }}">
-                @if($session->difference !== null)
-                    S/ {{ number_format($session->difference, 2) }}
-                    @if($session->difference > 0)
-                        <span class="text-small">(Sobrante)</span>
-                    @elseif($session->difference < 0)
-                        <span class="text-small">(Faltante)</span>
-                    @endif
-                @else
-                    S/ __________
-                @endif
-            </div>
-        </div>
-    </div>
-</div>
-
 {{-- Observaciones --}}
-<div class="mt-15">
-    <h3>Observaciones / Notas:</h3>
-    <div class="border p-10" style="min-height: 80px; background-color: #f9fafb;">
-        @if($session->closing_notes)
-            {{ $session->closing_notes }}
-        @else
-            <span class="text-muted text-small">
-                _____________________________________________________________________________<br><br>
-                _____________________________________________________________________________<br><br>
-                _____________________________________________________________________________
-            </span>
-        @endif
-    </div>
+<div class="summary-box mt-5">
+    <div class="summary-title">Observaciones</div>
+    <table class="summary-table">
+        <tr>
+            <td style="padding: 4px;">
+                @if($session->closing_notes)
+                    {{ $session->closing_notes }}
+                @else
+                    <span class="text-muted text-small">___________________________________________________________________</span>
+                @endif
+            </td>
+        </tr>
+    </table>
 </div>
 
-{{-- Sección de Firmas --}}
+{{-- Firmas --}}
 <div class="signature-section">
     <div class="signature-box">
         <div class="signature-line">
@@ -270,20 +188,5 @@
         </div>
     </div>
 </div>
-
-{{-- Alerta si hay diferencia --}}
-@if($session->difference !== null && $session->difference != 0)
-<div class="alert {{ $session->difference > 0 ? 'alert-warning' : 'alert-danger' }} no-page-break mt-15">
-    <strong>
-        @if($session->difference > 0)
-            ⚠️ SOBRANTE DETECTADO:
-        @else
-            ❌ FALTANTE DETECTADO:
-        @endif
-    </strong>
-    Se registró una diferencia de <strong>S/ {{ number_format(abs($session->difference), 2) }}</strong>.
-    Se recomienda revisar todos los movimientos y justificar la diferencia.
-</div>
-@endif
 
 @endsection

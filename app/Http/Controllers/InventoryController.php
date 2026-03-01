@@ -116,7 +116,7 @@ class InventoryController extends Controller
         $request->validate([
             'inventory_id' => 'required|exists:inventory,id',
             'new_stock' => "required|{$minStock}",
-            'reason' => 'required|string|max:255',
+            'reason' => 'nullable|string|max:255',
         ]);
 
         $inventory = Inventory::findOrFail($request->inventory_id);

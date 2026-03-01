@@ -2,39 +2,29 @@
 
 @section('content')
 
-{{-- Resumen Ejecutivo --}}
-<div class="summary-box">
-    <div class="summary-title">RESUMEN EJECUTIVO</div>
-    <div class="summary-grid">
-        <div class="summary-row">
-            <div class="summary-label">Total de Sesiones:</div>
-            <div class="summary-value highlight">{{ $totals['count'] }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">Saldo Inicial Total:</div>
-            <div class="summary-value">S/ {{ number_format($totals['total_opening_balance'], 2) }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">Saldo Esperado Total:</div>
-            <div class="summary-value">S/ {{ number_format($totals['total_expected_balance'], 2) }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">Saldo Real Total:</div>
-            <div class="summary-value highlight text-success">S/ {{ number_format($totals['total_actual_balance'], 2) }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">Diferencia Total:</div>
-            <div class="summary-value highlight {{ $totals['total_difference'] > 0 ? 'text-success' : ($totals['total_difference'] < 0 ? 'text-danger' : '') }}">
+{{-- Resumen Ejecutivo - Stat Cards --}}
+<table class="stats-table">
+    <tr>
+        <td class="primary">
+            <div class="stat-label">Total Sesiones</div>
+            <div class="stat-value">{{ $totals['count'] }}</div>
+        </td>
+        <td class="info">
+            <div class="stat-label">Saldo Inicial Total</div>
+            <div class="stat-value">S/ {{ number_format($totals['total_opening_balance'], 2) }}</div>
+        </td>
+        <td class="success">
+            <div class="stat-label">Saldo Real Total</div>
+            <div class="stat-value">S/ {{ number_format($totals['total_actual_balance'], 2) }}</div>
+        </td>
+        <td class="{{ $totals['total_difference'] < 0 ? 'danger' : 'warning' }}">
+            <div class="stat-label">Diferencia Total</div>
+            <div class="stat-value {{ $totals['total_difference'] > 0 ? 'text-success' : ($totals['total_difference'] < 0 ? 'text-danger' : '') }}">
                 S/ {{ number_format($totals['total_difference'], 2) }}
-                @if($totals['total_difference'] > 0)
-                    <span class="text-small">(Sobrante)</span>
-                @elseif($totals['total_difference'] < 0)
-                    <span class="text-small">(Faltante)</span>
-                @endif
             </div>
-        </div>
-    </div>
-</div>
+        </td>
+    </tr>
+</table>
 
 {{-- Tabla de Sesiones --}}
 <h2>Detalle de Sesiones de Caja</h2>
@@ -125,70 +115,6 @@
 <div class="alert alert-info">
     <strong>No hay resultados:</strong> No se encontraron sesiones de caja con los filtros aplicados.
 </div>
-@endif
-
-{{-- Estadísticas Adicionales --}}
-@if(count($sessions) > 0)
-<div class="mt-20">
-    <div class="grid-2">
-        <div class="col">
-            <div class="info-box">
-                <div class="info-box-header">Estadísticas por Estado</div>
-                <div class="info-box-content">
-                    <div class="info-row">
-                        <span class="info-label">Sesiones Abiertas:</span>
-                        <span class="info-value">
-                            {{ $sessions->where('status', 'abierta')->count() }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Sesiones Cerradas:</span>
-                        <span class="info-value">
-                            {{ $sessions->where('status', 'cerrada')->count() }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="info-box">
-                <div class="info-box-header">Análisis de Diferencias</div>
-                <div class="info-box-content">
-                    <div class="info-row">
-                        <span class="info-label">Con Sobrante:</span>
-                        <span class="info-value text-success">
-                            {{ $sessions->where('difference', '>', 0)->count() }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Con Faltante:</span>
-                        <span class="info-value text-danger">
-                            {{ $sessions->where('difference', '<', 0)->count() }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Sin Diferencia:</span>
-                        <span class="info-value">
-                            {{ $sessions->where('difference', 0)->count() }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{{-- Alertas si hay faltantes --}}
-@php
-    $sessionWithDeficit = $sessions->where('difference', '<', 0);
-@endphp
-
-@if($sessionWithDeficit->count() > 0)
-<div class="alert alert-warning mt-15">
-    <strong>⚠️ Atención:</strong> Se detectaron {{ $sessionWithDeficit->count() }} sesión(es) con faltante de dinero.
-    Se recomienda revisar los movimientos y arqueos de estas sesiones.
-</div>
-@endif
 @endif
 
 @endsection

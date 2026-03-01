@@ -3,9 +3,11 @@ import { Head, router } from '@inertiajs/react';
 import { type BreadcrumbItem } from '@/types';
 import { formatCurrency } from '@/lib/format-currency';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useState, FormEvent } from 'react';
 import { FileDown, Search, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -123,16 +125,20 @@ export default function ProfitabilityByProductReport({
             <div className="flex h-full flex-1 flex-col gap-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Rentabilidad por Producto</h1>
-                        <p className="text-muted-foreground">
-                            Análisis de márgenes de ganancia y rendimiento por producto
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <TrendingUp className="h-8 w-8 text-primary" />
+                        <div>
+                            <h1 className="text-3xl font-bold">Rentabilidad por Producto</h1>
+                            <p className="text-muted-foreground">
+                                Analisis de margenes de ganancia y rendimiento por producto
+                            </p>
+                        </div>
                     </div>
                     <Button
                         onClick={handleGeneratePdf}
                         disabled={isGenerating}
-                        className="bg-red-600 hover:bg-red-700"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
                     >
                         <FileDown className="mr-2 h-4 w-4" />
                         {isGenerating ? 'Generando...' : 'Exportar PDF'}
@@ -140,212 +146,239 @@ export default function ProfitabilityByProductReport({
                 </div>
 
                 {/* Filtros */}
-                <Card className="p-6">
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-4">
-                            {/* Fecha Desde */}
-                            <div className="space-y-2">
-                                <Label htmlFor="date_from">Fecha Desde</Label>
-                                <Input
-                                    id="date_from"
-                                    type="date"
-                                    value={filters.date_from}
-                                    onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                                />
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Filtros</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleSubmit}>
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                                {/* Fecha Desde */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_from">Fecha Desde</Label>
+                                    <Input
+                                        id="date_from"
+                                        type="date"
+                                        value={filters.date_from}
+                                        onChange={(e) => handleFilterChange('date_from', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Fecha Hasta */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="date_to">Fecha Hasta</Label>
+                                    <Input
+                                        id="date_to"
+                                        type="date"
+                                        value={filters.date_to}
+                                        onChange={(e) => handleFilterChange('date_to', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Busqueda */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="search">Buscar Producto</Label>
+                                    <Input
+                                        id="search"
+                                        type="text"
+                                        placeholder="Codigo o nombre..."
+                                        value={filters.search}
+                                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Categoria */}
+                                <div className="space-y-2">
+                                    <Label>Categoria</Label>
+                                    <Select
+                                        value={filters.category_id}
+                                        onValueChange={(value) => handleFilterChange('category_id', value === '_all' ? '' : value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="_all">Todas</SelectItem>
+                                            {categories.map((category) => (
+                                                <SelectItem key={category.id} value={String(category.id)}>
+                                                    {category.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Marca */}
+                                <div className="space-y-2">
+                                    <Label>Marca</Label>
+                                    <Select
+                                        value={filters.brand_id}
+                                        onValueChange={(value) => handleFilterChange('brand_id', value === '_all' ? '' : value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Todas" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="_all">Todas</SelectItem>
+                                            {brands.map((brand) => (
+                                                <SelectItem key={brand.id} value={String(brand.id)}>
+                                                    {brand.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Margen Minimo */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="min_margin">Margen Minimo (%)</Label>
+                                    <Input
+                                        id="min_margin"
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="0"
+                                        value={filters.min_margin}
+                                        onChange={(e) => handleFilterChange('min_margin', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Margen Maximo */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="max_margin">Margen Maximo (%)</Label>
+                                    <Input
+                                        id="max_margin"
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="100"
+                                        value={filters.max_margin}
+                                        onChange={(e) => handleFilterChange('max_margin', e.target.value)}
+                                    />
+                                </div>
+
+                                {/* Ordenar por */}
+                                <div className="space-y-2">
+                                    <Label>Ordenar por</Label>
+                                    <Select
+                                        value={filters.sort_by}
+                                        onValueChange={(value) => handleFilterChange('sort_by', value)}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Mayor Ganancia" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="profit">Mayor Ganancia</SelectItem>
+                                            <SelectItem value="margin">Mayor Margen</SelectItem>
+                                            <SelectItem value="revenue">Mayor Venta</SelectItem>
+                                            <SelectItem value="units">Mas Vendidos</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
 
-                            {/* Fecha Hasta */}
-                            <div className="space-y-2">
-                                <Label htmlFor="date_to">Fecha Hasta</Label>
-                                <Input
-                                    id="date_to"
-                                    type="date"
-                                    value={filters.date_to}
-                                    onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                                />
+                            <div className="flex justify-end gap-2 mt-4">
+                                <Button type="button" variant="outline" onClick={handleClearFilters}>
+                                    <RefreshCw className="mr-2 h-4 w-4" />
+                                    Limpiar Filtros
+                                </Button>
+                                <Button type="submit">
+                                    <Search className="mr-2 h-4 w-4" />
+                                    Buscar
+                                </Button>
                             </div>
-
-                            {/* Búsqueda */}
-                            <div className="space-y-2">
-                                <Label htmlFor="search">Buscar Producto</Label>
-                                <Input
-                                    id="search"
-                                    type="text"
-                                    placeholder="Código o nombre..."
-                                    value={filters.search}
-                                    onChange={(e) => handleFilterChange('search', e.target.value)}
-                                />
-                            </div>
-
-                            {/* Categoría */}
-                            <div className="space-y-2">
-                                <Label htmlFor="category_id">Categoría</Label>
-                                <select
-                                    id="category_id"
-                                    value={filters.category_id}
-                                    onChange={(e) => handleFilterChange('category_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todas</option>
-                                    {categories.map((category) => (
-                                        <option key={category.id} value={category.id}>
-                                            {category.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Marca */}
-                            <div className="space-y-2">
-                                <Label htmlFor="brand_id">Marca</Label>
-                                <select
-                                    id="brand_id"
-                                    value={filters.brand_id}
-                                    onChange={(e) => handleFilterChange('brand_id', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="">Todas</option>
-                                    {brands.map((brand) => (
-                                        <option key={brand.id} value={brand.id}>
-                                            {brand.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Margen Mínimo */}
-                            <div className="space-y-2">
-                                <Label htmlFor="min_margin">Margen Mínimo (%)</Label>
-                                <Input
-                                    id="min_margin"
-                                    type="number"
-                                    step="0.1"
-                                    placeholder="0"
-                                    value={filters.min_margin}
-                                    onChange={(e) => handleFilterChange('min_margin', e.target.value)}
-                                />
-                            </div>
-
-                            {/* Margen Máximo */}
-                            <div className="space-y-2">
-                                <Label htmlFor="max_margin">Margen Máximo (%)</Label>
-                                <Input
-                                    id="max_margin"
-                                    type="number"
-                                    step="0.1"
-                                    placeholder="100"
-                                    value={filters.max_margin}
-                                    onChange={(e) => handleFilterChange('max_margin', e.target.value)}
-                                />
-                            </div>
-
-                            {/* Ordenar por */}
-                            <div className="space-y-2">
-                                <Label htmlFor="sort_by">Ordenar por</Label>
-                                <select
-                                    id="sort_by"
-                                    value={filters.sort_by}
-                                    onChange={(e) => handleFilterChange('sort_by', e.target.value)}
-                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                >
-                                    <option value="profit">Mayor Ganancia</option>
-                                    <option value="margin">Mayor Margen</option>
-                                    <option value="revenue">Mayor Venta</option>
-                                    <option value="units">Más Vendidos</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-2">
-                            <Button type="submit">
-                                <Search className="mr-2 h-4 w-4" />
-                                Buscar
-                            </Button>
-                            <Button type="button" variant="outline" onClick={handleClearFilters}>
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Limpiar Filtros
-                            </Button>
-                        </div>
-                    </form>
+                        </form>
+                    </CardContent>
                 </Card>
 
                 {/* Resumen */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Productos</div>
-                            <div className="text-2xl font-bold">{totals.total_products}</div>
+                        <Card className="border-l-4 border-blue-500">
+                            <CardContent className="pt-0">
+                                <div className="text-sm text-muted-foreground">Productos</div>
+                                <div className="text-2xl font-bold">{totals.total_products}</div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Unidades Vendidas</div>
-                            <div className="text-2xl font-bold">{totals.total_units_sold}</div>
+                        <Card className="border-l-4 border-purple-500">
+                            <CardContent className="pt-0">
+                                <div className="text-sm text-muted-foreground">Unidades Vendidas</div>
+                                <div className="text-2xl font-bold">{totals.total_units_sold}</div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Costo Total</div>
-                            <div className="text-2xl font-bold text-red-600">
-                                {formatCurrency(totals.total_cost)}
-                            </div>
+                        <Card className="border-l-4 border-red-500">
+                            <CardContent className="pt-0">
+                                <div className="text-sm text-muted-foreground">Costo Total</div>
+                                <div className="text-2xl font-bold text-red-600">
+                                    {formatCurrency(totals.total_cost)}
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4">
-                            <div className="text-sm text-muted-foreground">Ingresos Totales</div>
-                            <div className="text-2xl font-bold text-blue-600">
-                                {formatCurrency(totals.total_revenue)}
-                            </div>
+                        <Card className="border-l-4 border-indigo-500">
+                            <CardContent className="pt-0">
+                                <div className="text-sm text-muted-foreground">Ingresos Totales</div>
+                                <div className="text-2xl font-bold text-blue-600">
+                                    {formatCurrency(totals.total_revenue)}
+                                </div>
+                            </CardContent>
                         </Card>
-                        <Card className="p-4 bg-green-50">
-                            <div className="text-sm text-green-800">Ganancia Total</div>
-                            <div className="text-2xl font-bold text-green-600">
-                                {formatCurrency(totals.total_profit)}
-                            </div>
-                            <div className="text-xs text-green-600 mt-1">
-                                Margen: {totals.avg_margin.toFixed(1)}%
-                            </div>
+                        <Card className="border-l-4 border-green-500 bg-green-50 dark:bg-green-950">
+                            <CardContent className="pt-0">
+                                <div className="text-sm text-green-800 dark:text-green-200">Ganancia Total</div>
+                                <div className="text-2xl font-bold text-green-600">
+                                    {formatCurrency(totals.total_profit)}
+                                </div>
+                                <div className="text-xs text-green-600 mt-1">
+                                    Margen: {totals.avg_margin.toFixed(1)}%
+                                </div>
+                            </CardContent>
                         </Card>
                     </div>
                 )}
 
                 {/* Tabla de Rentabilidad */}
                 <Card>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="border-b bg-muted/50">
-                                <tr>
-                                    <th className="text-left p-4 font-medium">Código</th>
-                                    <th className="text-left p-4 font-medium">Producto</th>
-                                    <th className="text-left p-4 font-medium">Categoría</th>
-                                    <th className="text-center p-4 font-medium">Unid. Vendidas</th>
-                                    <th className="text-right p-4 font-medium">Precio Prom.</th>
-                                    <th className="text-right p-4 font-medium">Costo Prom.</th>
-                                    <th className="text-right p-4 font-medium">Ingresos</th>
-                                    <th className="text-right p-4 font-medium">Ganancia</th>
-                                    <th className="text-center p-4 font-medium">Margen %</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <CardHeader>
+                        <CardTitle>Detalle de Rentabilidad por Producto</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Codigo</TableHead>
+                                    <TableHead>Producto</TableHead>
+                                    <TableHead>Categoria</TableHead>
+                                    <TableHead className="text-center">Unid. Vendidas</TableHead>
+                                    <TableHead className="text-right">Precio Prom.</TableHead>
+                                    <TableHead className="text-right">Costo Prom.</TableHead>
+                                    <TableHead className="text-right">Ingresos</TableHead>
+                                    <TableHead className="text-right">Ganancia</TableHead>
+                                    <TableHead className="text-center">Margen %</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {profitability.length > 0 ? (
                                     profitability.map((item) => (
-                                        <tr key={item.product.id} className="border-b hover:bg-muted/50">
-                                            <td className="p-4 font-mono text-sm">{item.product.code}</td>
-                                            <td className="p-4 font-medium">{item.product.name}</td>
-                                            <td className="p-4 text-sm">
+                                        <TableRow key={item.product.id}>
+                                            <TableCell className="font-mono text-sm">{item.product.code}</TableCell>
+                                            <TableCell className="font-medium">{item.product.name}</TableCell>
+                                            <TableCell className="text-sm">
                                                 {item.product.category?.name || '-'}
-                                            </td>
-                                            <td className="p-4 text-center font-bold">
+                                            </TableCell>
+                                            <TableCell className="text-center font-bold">
                                                 {item.units_sold}
-                                            </td>
-                                            <td className="p-4 text-right">
+                                            </TableCell>
+                                            <TableCell className="text-right">
                                                 {formatCurrency(item.avg_sale_price)}
-                                            </td>
-                                            <td className="p-4 text-right text-red-600">
+                                            </TableCell>
+                                            <TableCell className="text-right text-red-600">
                                                 {formatCurrency(item.avg_cost_price)}
-                                            </td>
-                                            <td className="p-4 text-right font-medium text-blue-600">
+                                            </TableCell>
+                                            <TableCell className="text-right font-medium text-blue-600">
                                                 {formatCurrency(item.total_revenue)}
-                                            </td>
-                                            <td className="p-4 text-right font-bold text-green-600">
+                                            </TableCell>
+                                            <TableCell className="text-right font-bold text-green-600">
                                                 {formatCurrency(item.gross_profit)}
-                                            </td>
-                                            <td className="p-4 text-center">
+                                            </TableCell>
+                                            <TableCell className="text-center">
                                                 <div className="flex items-center justify-center gap-1">
                                                     {item.profit_margin >= 15 ? (
                                                         <TrendingUp className="h-4 w-4 text-green-600" />
@@ -360,118 +393,130 @@ export default function ProfitabilityByProductReport({
                                                         {item.profit_margin.toFixed(1)}%
                                                     </span>
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </TableCell>
+                                        </TableRow>
                                     ))
                                 ) : (
-                                    <tr>
-                                        <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                                    <TableRow>
+                                        <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
                                             <TrendingUp className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
                                             No se encontraron productos con los filtros aplicados
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
+                    </CardContent>
                 </Card>
 
-                {/* Análisis de Rentabilidad */}
+                {/* Analisis de Rentabilidad */}
                 {profitability.length > 0 && (
                     <div className="grid gap-4 md:grid-cols-3">
-                        {/* Productos Más Rentables */}
-                        <Card className="p-6">
-                            <h3 className="text-lg font-semibold mb-4 text-green-600">
-                                Top 5 - Mayor Ganancia
-                            </h3>
-                            <div className="space-y-3">
-                                {profitability.slice(0, 5).map((item, index) => (
-                                    <div key={index} className="flex justify-between items-start">
-                                        <div className="flex-1">
-                                            <div className="font-medium text-sm">{item.product.name}</div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {item.units_sold} unidades
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="font-bold text-green-600 text-sm">
-                                                {formatCurrency(item.gross_profit)}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {item.profit_margin.toFixed(1)}%
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-
-                        {/* Productos con Mejor Margen */}
-                        <Card className="p-6">
-                            <h3 className="text-lg font-semibold mb-4 text-blue-600">
-                                Top 5 - Mejor Margen
-                            </h3>
-                            <div className="space-y-3">
-                                {[...profitability]
-                                    .sort((a, b) => b.profit_margin - a.profit_margin)
-                                    .slice(0, 5)
-                                    .map((item, index) => (
+                        {/* Productos Mas Rentables */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-green-600">
+                                    Top 5 - Mayor Ganancia
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {profitability.slice(0, 5).map((item, index) => (
                                         <div key={index} className="flex justify-between items-start">
                                             <div className="flex-1">
-                                                <div className="font-medium text-sm">
-                                                    {item.product.name}
-                                                </div>
+                                                <div className="font-medium text-sm">{item.product.name}</div>
                                                 <div className="text-xs text-muted-foreground">
                                                     {item.units_sold} unidades
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div
-                                                    className={`font-bold text-sm ${getMarginColor(
-                                                        item.profit_margin
-                                                    )}`}
-                                                >
-                                                    {item.profit_margin.toFixed(1)}%
-                                                </div>
-                                                <div className="text-xs text-muted-foreground">
+                                                <div className="font-bold text-green-600 text-sm">
                                                     {formatCurrency(item.gross_profit)}
                                                 </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {item.profit_margin.toFixed(1)}%
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
-                            </div>
+                                </div>
+                            </CardContent>
                         </Card>
 
-                        {/* Productos Más Vendidos */}
-                        <Card className="p-6">
-                            <h3 className="text-lg font-semibold mb-4 text-purple-600">
-                                Top 5 - Más Vendidos
-                            </h3>
-                            <div className="space-y-3">
-                                {[...profitability]
-                                    .sort((a, b) => b.units_sold - a.units_sold)
-                                    .slice(0, 5)
-                                    .map((item, index) => (
-                                        <div key={index} className="flex justify-between items-start">
-                                            <div className="flex-1">
-                                                <div className="font-medium text-sm">
-                                                    {item.product.name}
+                        {/* Productos con Mejor Margen */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-blue-600">
+                                    Top 5 - Mejor Margen
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {[...profitability]
+                                        .sort((a, b) => b.profit_margin - a.profit_margin)
+                                        .slice(0, 5)
+                                        .map((item, index) => (
+                                            <div key={index} className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <div className="font-medium text-sm">
+                                                        {item.product.name}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {item.units_sold} unidades
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    Margen: {item.profit_margin.toFixed(1)}%
+                                                <div className="text-right">
+                                                    <div
+                                                        className={`font-bold text-sm ${getMarginColor(
+                                                            item.profit_margin
+                                                        )}`}
+                                                    >
+                                                        {item.profit_margin.toFixed(1)}%
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {formatCurrency(item.gross_profit)}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <div className="font-bold text-purple-600 text-sm">
-                                                    {item.units_sold} unid.
+                                        ))}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Productos Mas Vendidos */}
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-purple-600">
+                                    Top 5 - Mas Vendidos
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-3">
+                                    {[...profitability]
+                                        .sort((a, b) => b.units_sold - a.units_sold)
+                                        .slice(0, 5)
+                                        .map((item, index) => (
+                                            <div key={index} className="flex justify-between items-start">
+                                                <div className="flex-1">
+                                                    <div className="font-medium text-sm">
+                                                        {item.product.name}
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        Margen: {item.profit_margin.toFixed(1)}%
+                                                    </div>
                                                 </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {formatCurrency(item.total_revenue)}
+                                                <div className="text-right">
+                                                    <div className="font-bold text-purple-600 text-sm">
+                                                        {item.units_sold} unid.
+                                                    </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {formatCurrency(item.total_revenue)}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
-                            </div>
+                                        ))}
+                                </div>
+                            </CardContent>
                         </Card>
                     </div>
                 )}

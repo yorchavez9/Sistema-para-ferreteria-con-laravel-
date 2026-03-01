@@ -48,22 +48,20 @@ class ReportController extends Controller
     // REPORTES DE VENTAS
     // ========================================
 
-    /**
-     * Vista del reporte de ventas detallado
-     */
     public function salesDetailed(Request $request)
     {
         $data = $this->reportService->getSalesDetailed($request->all());
-
         return Inertia::render('Reports/Sales/Detailed', $data);
     }
 
-    /**
-     * PDF del reporte de ventas detallado
-     */
     public function salesDetailedPdf(Request $request)
     {
-        $data = $this->reportService->getSalesDetailed($request->all());
+        $filters = $request->all();
+        $filters['per_page'] = 99999;
+        $data = $this->reportService->getSalesDetailed($filters);
+
+        // Convertir paginator a colección para el PDF
+        $data['sales'] = collect($data['sales']->items());
 
         $pdf = PDF::loadView('pdf.reports.sales.detailed', $data);
         $pdf->setPaper('a4', 'landscape');
@@ -71,19 +69,12 @@ class ReportController extends Controller
         return $pdf->stream('reporte-ventas-detallado-' . now()->format('Y-m-d') . '.pdf');
     }
 
-    /**
-     * Vista del reporte de ventas por cliente
-     */
     public function salesByClient(Request $request)
     {
         $data = $this->reportService->getSalesByClient($request->all());
-
         return Inertia::render('Reports/Sales/ByClient', $data);
     }
 
-    /**
-     * PDF del reporte de ventas por cliente
-     */
     public function salesByClientPdf(Request $request)
     {
         $data = $this->reportService->getSalesByClient($request->all());
@@ -98,22 +89,20 @@ class ReportController extends Controller
     // REPORTES DE CAJA
     // ========================================
 
-    /**
-     * Vista del reporte de caja diaria
-     */
     public function cashDaily(Request $request)
     {
         $data = $this->reportService->getCashDaily($request->all());
-
         return Inertia::render('Reports/Cash/Daily', $data);
     }
 
-    /**
-     * PDF del reporte de caja diaria
-     */
     public function cashDailyPdf(Request $request)
     {
-        $data = $this->reportService->getCashDaily($request->all());
+        $filters = $request->all();
+        $filters['per_page'] = 99999;
+        $data = $this->reportService->getCashDaily($filters);
+
+        // Convertir paginator a colección
+        $data['sessions'] = collect($data['sessions']->items());
 
         $pdf = PDF::loadView('pdf.reports.cash.daily', $data);
         $pdf->setPaper('a4', 'portrait');
@@ -121,19 +110,12 @@ class ReportController extends Controller
         return $pdf->stream('reporte-caja-diaria-' . now()->format('Y-m-d') . '.pdf');
     }
 
-    /**
-     * Vista del reporte de arqueo de caja
-     */
     public function cashClosing($cashSessionId)
     {
         $data = $this->reportService->getCashClosing($cashSessionId);
-
         return Inertia::render('Reports/Cash/Closing', $data);
     }
 
-    /**
-     * PDF del reporte de arqueo de caja
-     */
     public function cashClosingPdf($cashSessionId)
     {
         $data = $this->reportService->getCashClosing($cashSessionId);
@@ -148,22 +130,20 @@ class ReportController extends Controller
     // REPORTES DE INVENTARIO
     // ========================================
 
-    /**
-     * Vista del reporte de inventario valorizado
-     */
     public function inventoryValued(Request $request)
     {
         $data = $this->reportService->getInventoryValued($request->all());
-
         return Inertia::render('Reports/Inventory/Valued', $data);
     }
 
-    /**
-     * PDF del reporte de inventario valorizado
-     */
     public function inventoryValuedPdf(Request $request)
     {
-        $data = $this->reportService->getInventoryValued($request->all());
+        $filters = $request->all();
+        $filters['per_page'] = 99999;
+        $data = $this->reportService->getInventoryValued($filters);
+
+        // Convertir paginator a colección
+        $data['inventory'] = collect($data['inventory']->items());
 
         $pdf = PDF::loadView('pdf.reports.inventory.valued', $data);
         $pdf->setPaper('a4', 'landscape');
@@ -171,19 +151,12 @@ class ReportController extends Controller
         return $pdf->stream('inventario-valorizado-' . now()->format('Y-m-d') . '.pdf');
     }
 
-    /**
-     * Vista del reporte de movimientos de inventario
-     */
     public function inventoryMovements(Request $request)
     {
         $data = $this->reportService->getInventoryMovements($request->all());
-
         return Inertia::render('Reports/Inventory/Movements', $data);
     }
 
-    /**
-     * PDF del reporte de movimientos de inventario
-     */
     public function inventoryMovementsPdf(Request $request)
     {
         $data = $this->reportService->getInventoryMovements($request->all());
@@ -198,22 +171,37 @@ class ReportController extends Controller
     // REPORTES DE CUENTAS POR COBRAR
     // ========================================
 
-    /**
-     * Vista del reporte de cuentas por cobrar
-     */
     public function receivables(Request $request)
     {
         $data = $this->reportService->getReceivables($request->all());
-
         return Inertia::render('Reports/Receivables/Index', $data);
     }
 
-    /**
-     * PDF del reporte de cuentas por cobrar
-     */
     public function receivablesPdf(Request $request)
     {
-        $data = $this->reportService->getReceivables($request->all());
+        $filters = $request->all();
+        $filters['per_page'] = 99999;
+        $data = $this->reportService->getReceivables($filters);
+
+        // Renombrar 'sales' a 'receivables' y convertir paginator
+        $items = collect($data['sales']->items());
+
+        // Transformar items para que tengan las claves que espera la plantilla
+        $data['receivables'] = $items->map(function ($item) {
+            $sale = $item['sale'];
+            return [
+                'sale' => $sale,
+                'total_installments' => $item['total_installments'],
+                'paid_installments' => $item['paid_installments'],
+                'initial_payment' => $sale->initial_payment ?? 0,
+                'remaining_balance' => $sale->remaining_balance ?? 0,
+                'days_overdue' => $item['max_days_overdue'] ?? 0,
+            ];
+        });
+        unset($data['sales']);
+
+        // Agregar initial_payment_total a totals
+        $data['totals']['initial_payment_total'] = $data['receivables']->sum('initial_payment');
 
         $pdf = PDF::loadView('pdf.reports.receivables.index', $data);
         $pdf->setPaper('a4', 'landscape');
@@ -225,22 +213,20 @@ class ReportController extends Controller
     // REPORTES DE COMPRAS
     // ========================================
 
-    /**
-     * Vista del reporte de compras
-     */
     public function purchases(Request $request)
     {
         $data = $this->reportService->getPurchases($request->all());
-
         return Inertia::render('Reports/Purchases/Index', $data);
     }
 
-    /**
-     * PDF del reporte de compras
-     */
     public function purchasesPdf(Request $request)
     {
-        $data = $this->reportService->getPurchases($request->all());
+        $filters = $request->all();
+        $filters['per_page'] = 99999;
+        $data = $this->reportService->getPurchases($filters);
+
+        // Convertir paginator a colección
+        $data['purchases'] = collect($data['purchases']->items());
 
         $pdf = PDF::loadView('pdf.reports.purchases.index', $data);
         $pdf->setPaper('a4', 'landscape');
@@ -252,22 +238,24 @@ class ReportController extends Controller
     // REPORTES DE GASTOS
     // ========================================
 
-    /**
-     * Vista del reporte de gastos
-     */
     public function expenses(Request $request)
     {
         $data = $this->reportService->getExpenses($request->all());
-
         return Inertia::render('Reports/Expenses/Index', $data);
     }
 
-    /**
-     * PDF del reporte de gastos
-     */
     public function expensesPdf(Request $request)
     {
         $data = $this->reportService->getExpenses($request->all());
+
+        // Remapear totals para que coincidan con la plantilla PDF
+        $expenses = $data['expenses'];
+        $data['totals'] = [
+            'total_expenses' => $expenses->count(),
+            'total_amount' => $expenses->sum('amount'),
+            'avg_expense' => $expenses->count() > 0 ? round($expenses->sum('amount') / $expenses->count(), 2) : 0,
+            'max_expense' => $expenses->max('amount') ?? 0,
+        ];
 
         $pdf = PDF::loadView('pdf.reports.expenses.index', $data);
         $pdf->setPaper('a4', 'portrait');
@@ -279,22 +267,22 @@ class ReportController extends Controller
     // REPORTES DE RENTABILIDAD
     // ========================================
 
-    /**
-     * Vista del reporte de rentabilidad por producto
-     */
     public function profitabilityByProduct(Request $request)
     {
         $data = $this->reportService->getProfitabilityByProduct($request->all());
-
         return Inertia::render('Reports/Profitability/ByProduct', $data);
     }
 
-    /**
-     * PDF del reporte de rentabilidad por producto
-     */
     public function profitabilityByProductPdf(Request $request)
     {
         $data = $this->reportService->getProfitabilityByProduct($request->all());
+
+        // Renombrar 'products' a 'profitability' y adaptar estructura
+        $data['profitability'] = $data['products'];
+        unset($data['products']);
+
+        // Remapear totals: 'total_sales' → 'total_revenue'
+        $data['totals']['total_revenue'] = $data['totals']['total_sales'] ?? 0;
 
         $pdf = PDF::loadView('pdf.reports.profitability.by-product', $data);
         $pdf->setPaper('a4', 'landscape');

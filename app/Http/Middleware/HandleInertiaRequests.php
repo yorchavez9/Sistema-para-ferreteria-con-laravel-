@@ -58,6 +58,8 @@ class HandleInertiaRequests extends Middleware
                 'currency_symbol' => $settings->currency_symbol,
                 'igv_percentage' => $settings->igv_percentage,
                 'price_decimals' => $settings->price_decimals,
+                'primary_color_light' => $settings->primary_color_light ?? '#4f46e5',
+                'primary_color_dark' => $settings->primary_color_dark ?? '#6366f1',
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),

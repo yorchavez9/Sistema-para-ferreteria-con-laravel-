@@ -1,6 +1,5 @@
 import { NavFooter } from '@/components/nav-footer';
 import { NavMainNested } from '@/components/nav-main-nested';
-import { NavUser } from '@/components/nav-user';
 import {
     Sidebar,
     SidebarContent,
@@ -37,7 +36,8 @@ import {
     BarChart3,
     FileBarChart,
     ShoppingBag,
-    PieChart
+    PieChart,
+    Palette,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -261,6 +261,11 @@ const mainNavItems: NavItem[] = [
                 href: '/settings/system/apis',
                 icon: Cloud,
             },
+            {
+                title: 'Personalización',
+                href: '/settings/system/theme',
+                icon: Palette,
+            },
         ],
     },
 ];
@@ -293,7 +298,6 @@ export function AppSidebar() {
                 {footerNavItems.length > 0 && (
                     <NavFooter items={footerNavItems} className="mt-auto" />
                 )}
-                <NavUser />
             </SidebarFooter>
         </Sidebar>
     );

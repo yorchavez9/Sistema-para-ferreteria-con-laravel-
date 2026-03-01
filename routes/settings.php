@@ -53,5 +53,9 @@ Route::middleware('auth')->group(function () {
         // Configuración de Ventas
         Route::get('sales', [SettingController::class, 'sales'])->name('settings.sales');
         Route::put('sales', [SettingController::class, 'updateSales'])->name('settings.sales.update')->middleware('permission:settings-edit');
+
+        // Personalización de Tema
+        Route::get('theme', [SettingController::class, 'theme'])->name('settings.theme');
+        Route::put('theme', [SettingController::class, 'updateTheme'])->name('settings.theme.update')->middleware('permission:settings-edit');
     });
 });

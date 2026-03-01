@@ -127,13 +127,11 @@ export default function Adjustment({ inventory, branches, filters }: AdjustmentP
         e.preventDefault();
 
         post('/inventory/adjustment', {
+            preserveScroll: true,
             onSuccess: () => {
-                showSuccess('¡Ajuste realizado!', 'El inventario ha sido actualizado exitosamente.');
                 closeDialog();
+                showSuccess('¡Ajuste realizado!', 'El inventario ha sido actualizado exitosamente.');
             },
-            onError: () => {
-                showError('Error al ajustar', 'No se pudo realizar el ajuste de inventario.');
-            }
         });
     };
 
@@ -285,15 +283,17 @@ export default function Adjustment({ inventory, branches, filters }: AdjustmentP
                     <form onSubmit={handleSubmit}>
                         <DialogHeader>
                             <DialogTitle>Ajustar Stock</DialogTitle>
-                            <DialogDescription>
-                                {selectedItem && (
-                                    <div className="mt-2">
-                                        <p className="font-medium">{selectedItem.product.name}</p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {selectedItem.product.code} - {selectedItem.branch.name}
-                                        </p>
-                                    </div>
-                                )}
+                            <DialogDescription asChild>
+                                <div>
+                                    {selectedItem && (
+                                        <div className="mt-2">
+                                            <p className="font-medium">{selectedItem.product.name}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {selectedItem.product.code} - {selectedItem.branch.name}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </DialogDescription>
                         </DialogHeader>
 
@@ -360,7 +360,7 @@ export default function Adjustment({ inventory, branches, filters }: AdjustmentP
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label htmlFor="reason">Motivo del Ajuste *</Label>
+                                        <Label htmlFor="reason">Motivo del Ajuste</Label>
                                         <Textarea
                                             id="reason"
                                             value={data.reason}

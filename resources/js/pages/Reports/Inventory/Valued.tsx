@@ -12,7 +12,6 @@ import {
     FileDown,
     Search,
     RefreshCw,
-    Filter,
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
@@ -112,7 +111,6 @@ export default function InventoryValuedReport({
     filters: initialFilters = {},
 }: Props) {
     const [searchTerm, setSearchTerm] = useState(initialFilters.search || '');
-    const [showFilters, setShowFilters] = useState(false);
     const [filterData, setFilterData] = useState({
         branch_id: initialFilters.branch_id || '',
         category_id: initialFilters.category_id || '',
@@ -124,7 +122,7 @@ export default function InventoryValuedReport({
     const [sortDirection, setSortDirection] = useState(initialFilters.sort_direction || 'asc');
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // Búsqueda en tiempo real con debounce
+    // Busqueda en tiempo real con debounce
     const debouncedSearch = useDebouncedCallback((value: string) => {
         const params: any = {
             search: value,
@@ -278,54 +276,157 @@ export default function InventoryValuedReport({
             <div className="space-y-6 p-6">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold">Inventario Valorizado</h1>
-                        <p className="text-muted-foreground">
-                            Stock actual con valorización y análisis de rentabilidad
-                        </p>
+                    <div className="flex items-center gap-3">
+                        <Package className="h-8 w-8 text-primary" />
+                        <div>
+                            <h1 className="text-3xl font-bold">Inventario Valorizado</h1>
+                            <p className="text-muted-foreground">
+                                Stock actual con valorizacion y analisis de rentabilidad
+                            </p>
+                        </div>
                     </div>
                     <Button
                         onClick={handleGeneratePdf}
                         disabled={isGenerating}
-                        className="bg-red-600 hover:bg-red-700"
+                        variant="outline"
+                        className="text-red-600 border-red-600 hover:bg-red-50"
                     >
                         <FileDown className="mr-2 h-4 w-4" />
                         {isGenerating ? 'Generando...' : 'Exportar PDF'}
                     </Button>
                 </div>
 
-                {/* Barra de Búsqueda */}
+                {/* Filtros - Always visible */}
                 <Card>
-                    <CardContent className="pt-6">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    type="text"
-                                    placeholder="Buscar por código o nombre de producto..."
-                                    value={searchTerm}
-                                    onChange={(e) => handleSearchChange(e.target.value)}
-                                    className="pl-10"
-                                />
+                    <CardHeader>
+                        <CardTitle>Filtros</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Search at top full-width */}
+                        <div className="relative mb-4">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="text"
+                                placeholder="Buscar por codigo o nombre de producto..."
+                                value={searchTerm}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                className="pl-10"
+                            />
+                        </div>
+
+                        {/* Filters in 4-column grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="branch_id">Sucursal</Label>
+                                <Select
+                                    value={filterData.branch_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, branch_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="branch_id">
+                                        <SelectValue placeholder="Todas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todas</SelectItem>
+                                        {branches.map((branch) => (
+                                            <SelectItem key={branch.id} value={branch.id.toString()}>
+                                                {branch.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                            <Button onClick={() => setShowFilters(!showFilters)} variant="outline">
-                                <Filter className="h-4 w-4 mr-2" />
-                                {showFilters ? 'Ocultar Filtros' : 'Filtros Avanzados'}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="category_id">Categoria</Label>
+                                <Select
+                                    value={filterData.category_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, category_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="category_id">
+                                        <SelectValue placeholder="Todas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todas</SelectItem>
+                                        {categories.map((category) => (
+                                            <SelectItem key={category.id} value={category.id.toString()}>
+                                                {category.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="brand_id">Marca</Label>
+                                <Select
+                                    value={filterData.brand_id || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, brand_id: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="brand_id">
+                                        <SelectValue placeholder="Todas" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todas</SelectItem>
+                                        {brands.map((brand) => (
+                                            <SelectItem key={brand.id} value={brand.id.toString()}>
+                                                {brand.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="stock_status">Estado de Stock</Label>
+                                <Select
+                                    value={filterData.stock_status || '_all'}
+                                    onValueChange={(value) =>
+                                        setFilterData({ ...filterData, stock_status: value === '_all' ? '' : value })
+                                    }
+                                >
+                                    <SelectTrigger id="stock_status">
+                                        <SelectValue placeholder="Todos" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">Todos</SelectItem>
+                                        <SelectItem value="normal">Stock Normal</SelectItem>
+                                        <SelectItem value="bajo">Stock Bajo</SelectItem>
+                                        <SelectItem value="agotado">Agotado</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        {/* Buttons right-aligned */}
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button onClick={clearFilters} variant="outline">
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Limpiar
+                            </Button>
+                            <Button onClick={handleFilter}>
+                                <Search className="mr-2 h-4 w-4" />
+                                Aplicar Filtros
                             </Button>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* Estadísticas Resumidas */}
+                {/* Estadisticas Resumidas */}
                 {totals && (
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
-                        <Card>
+                        <Card className="border-l-4 border-blue-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Total Productos</div>
                                 <div className="text-2xl font-bold">{totals.total_products}</div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-slate-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Valor en Costo</div>
                                 <div className="text-2xl font-bold">
@@ -333,7 +434,7 @@ export default function InventoryValuedReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-indigo-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Valor en Venta</div>
                                 <div className="text-2xl font-bold text-blue-600">
@@ -341,7 +442,7 @@ export default function InventoryValuedReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card>
+                        <Card className="border-l-4 border-green-500">
                             <CardContent className="pt-5 pb-4">
                                 <div className="text-sm text-muted-foreground">Ganancia Potencial</div>
                                 <div className="text-2xl font-bold text-green-600">
@@ -349,17 +450,17 @@ export default function InventoryValuedReport({
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-yellow-50">
+                        <Card className="border-l-4 border-amber-500 bg-amber-50 dark:bg-amber-950">
                             <CardContent className="pt-5 pb-4">
-                                <div className="text-sm text-yellow-800">Stock Bajo</div>
-                                <div className="text-2xl font-bold text-yellow-600">
+                                <div className="text-sm text-amber-800 dark:text-amber-200">Stock Bajo</div>
+                                <div className="text-2xl font-bold text-amber-600">
                                     {totals.low_stock_count}
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-red-50">
+                        <Card className="border-l-4 border-red-500 bg-red-50 dark:bg-red-950">
                             <CardContent className="pt-5 pb-4">
-                                <div className="text-sm text-red-800">Agotados</div>
+                                <div className="text-sm text-red-800 dark:text-red-200">Agotados</div>
                                 <div className="text-2xl font-bold text-red-600">
                                     {totals.out_stock_count}
                                 </div>
@@ -370,127 +471,18 @@ export default function InventoryValuedReport({
 
                 {/* Alertas */}
                 {totals && (totals.low_stock_count > 0 || totals.out_stock_count > 0) && (
-                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
                         <div className="flex">
-                            <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
                             <div className="ml-3">
-                                <p className="text-sm text-yellow-700">
-                                    <strong>Atención:</strong> Hay {totals.low_stock_count} producto(s) con
+                                <p className="text-sm text-amber-700 dark:text-amber-300">
+                                    <strong>Atencion:</strong> Hay {totals.low_stock_count} producto(s) con
                                     stock bajo y {totals.out_stock_count} producto(s) agotado(s). Se
                                     recomienda realizar pedidos pronto.
                                 </p>
                             </div>
                         </div>
                     </div>
-                )}
-
-                {/* Filtros Avanzados */}
-                {showFilters && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Filtros Avanzados</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="branch_id">Sucursal</Label>
-                                    <Select
-                                        value={filterData.branch_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, branch_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="branch_id">
-                                            <SelectValue placeholder="Todas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todas</SelectItem>
-                                            {branches.map((branch) => (
-                                                <SelectItem key={branch.id} value={branch.id.toString()}>
-                                                    {branch.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="category_id">Categoría</Label>
-                                    <Select
-                                        value={filterData.category_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, category_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="category_id">
-                                            <SelectValue placeholder="Todas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todas</SelectItem>
-                                            {categories.map((category) => (
-                                                <SelectItem key={category.id} value={category.id.toString()}>
-                                                    {category.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="brand_id">Marca</Label>
-                                    <Select
-                                        value={filterData.brand_id}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, brand_id: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="brand_id">
-                                            <SelectValue placeholder="Todas" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todas</SelectItem>
-                                            {brands.map((brand) => (
-                                                <SelectItem key={brand.id} value={brand.id.toString()}>
-                                                    {brand.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="stock_status">Estado de Stock</Label>
-                                    <Select
-                                        value={filterData.stock_status}
-                                        onValueChange={(value) =>
-                                            setFilterData({ ...filterData, stock_status: value })
-                                        }
-                                    >
-                                        <SelectTrigger id="stock_status">
-                                            <SelectValue placeholder="Todos" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="">Todos</SelectItem>
-                                            <SelectItem value="normal">Stock Normal</SelectItem>
-                                            <SelectItem value="bajo">Stock Bajo</SelectItem>
-                                            <SelectItem value="agotado">Agotado</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 mt-4">
-                                <Button onClick={handleFilter}>
-                                    <Search className="mr-2 h-4 w-4" />
-                                    Aplicar Filtros
-                                </Button>
-                                <Button onClick={clearFilters} variant="outline">
-                                    <RefreshCw className="mr-2 h-4 w-4" />
-                                    Limpiar
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
                 )}
 
                 {/* Tabla de Inventario */}
@@ -522,7 +514,7 @@ export default function InventoryValuedReport({
                                         onClick={() => handleSort('code')}
                                     >
                                         <div className="flex items-center">
-                                            Código
+                                            Codigo
                                             <SortIcon field="code" />
                                         </div>
                                     </TableHead>
@@ -535,7 +527,7 @@ export default function InventoryValuedReport({
                                             <SortIcon field="name" />
                                         </div>
                                     </TableHead>
-                                    <TableHead>Categoría</TableHead>
+                                    <TableHead>Categoria</TableHead>
                                     <TableHead>Marca</TableHead>
                                     <TableHead>Sucursal</TableHead>
                                     <TableHead
@@ -547,7 +539,7 @@ export default function InventoryValuedReport({
                                             <SortIcon field="current_stock" />
                                         </div>
                                     </TableHead>
-                                    <TableHead className="text-center">Mín/Máx</TableHead>
+                                    <TableHead className="text-center">Min/Max</TableHead>
                                     <TableHead
                                         className="text-right cursor-pointer hover:bg-muted/50"
                                         onClick={() => handleSort('cost_price')}
@@ -666,7 +658,7 @@ export default function InventoryValuedReport({
                             </TableBody>
                         </Table>
 
-                        {/* Paginación */}
+                        {/* Paginacion */}
                         {inventory?.data && inventory.data.length > 0 && (
                             <div className="flex items-center justify-between mt-4 pt-4 border-t">
                                 <div className="text-sm text-muted-foreground">

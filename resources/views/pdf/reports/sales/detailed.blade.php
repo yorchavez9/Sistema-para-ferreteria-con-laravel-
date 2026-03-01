@@ -2,79 +2,27 @@
 
 @section('content')
 
-{{-- Resumen Ejecutivo --}}
-<div class="summary-box">
-    <div class="summary-title">RESUMEN EJECUTIVO</div>
-    <div class="summary-grid">
-        <div class="summary-row">
-            <div class="summary-label">Total de Ventas:</div>
-            <div class="summary-value highlight">{{ $totals['count'] }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">Subtotal (Sin IGV):</div>
-            <div class="summary-value">S/ {{ number_format($totals['subtotal'], 2) }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">IGV (18%):</div>
-            <div class="summary-value">S/ {{ number_format($totals['tax'], 2) }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">Descuentos:</div>
-            <div class="summary-value">S/ {{ number_format($totals['discount'], 2) }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">TOTAL GENERAL:</div>
-            <div class="summary-value highlight text-primary">S/ {{ number_format($totals['total'], 2) }}</div>
-        </div>
-        <div class="summary-row">
-            <div class="summary-label">Ticket Promedio:</div>
-            <div class="summary-value">S/ {{ number_format($totals['avg_ticket'], 2) }}</div>
-        </div>
-    </div>
-</div>
-
-{{-- Totales por Método de Pago y Tipo de Documento --}}
-@if(count($totalsByPaymentMethod) > 0 || count($totalsByDocumentType) > 0)
-<div class="grid-2 mb-15">
-    @if(count($totalsByPaymentMethod) > 0)
-    <div class="col">
-        <div class="info-box">
-            <div class="info-box-header">Totales por Método de Pago</div>
-            <div class="info-box-content">
-                @foreach($totalsByPaymentMethod as $method => $data)
-                <div class="info-row">
-                    <span class="info-label">{{ ucfirst($method) }}:</span>
-                    <span class="info-value">
-                        S/ {{ number_format($data['total'], 2) }}
-                        <span class="text-small text-muted">({{ $data['count'] }} ventas)</span>
-                    </span>
-                </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-    @endif
-
-    @if(count($totalsByDocumentType) > 0)
-    <div class="col">
-        <div class="info-box">
-            <div class="info-box-header">Totales por Tipo de Documento</div>
-            <div class="info-box-content">
-                @foreach($totalsByDocumentType as $type => $data)
-                <div class="info-row">
-                    <span class="info-label">{{ ucfirst(str_replace('_', ' ', $type)) }}:</span>
-                    <span class="info-value">
-                        S/ {{ number_format($data['total'], 2) }}
-                        <span class="text-small text-muted">({{ $data['count'] }} ventas)</span>
-                    </span>
-                </div>
-                @endforeach
-            </div>
-        </div>
-    </div>
-    @endif
-</div>
-@endif
+{{-- Resumen Ejecutivo - Stat Cards --}}
+<table class="stats-table">
+    <tr>
+        <td class="primary">
+            <div class="stat-label">Total de Ventas</div>
+            <div class="stat-value">{{ $totals['count'] }}</div>
+        </td>
+        <td class="success">
+            <div class="stat-label">Total General</div>
+            <div class="stat-value">S/ {{ number_format($totals['total'], 2) }}</div>
+        </td>
+        <td class="info">
+            <div class="stat-label">Ticket Promedio</div>
+            <div class="stat-value">S/ {{ number_format($totals['avg_ticket'], 2) }}</div>
+        </td>
+        <td class="danger">
+            <div class="stat-label">Descuentos</div>
+            <div class="stat-value">S/ {{ number_format($totals['discount'], 2) }}</div>
+        </td>
+    </tr>
+</table>
 
 {{-- Tabla de Ventas --}}
 <h2>Detalle de Ventas</h2>
@@ -136,58 +84,6 @@
 @else
 <div class="alert alert-info">
     <strong>No hay resultados:</strong> No se encontraron ventas con los filtros aplicados.
-</div>
-@endif
-
-{{-- Notas adicionales --}}
-@if(count($sales) > 0)
-<div class="mt-20">
-    <div class="grid-2">
-        <div class="col">
-            <div class="info-box">
-                <div class="info-box-header">Estadísticas</div>
-                <div class="info-box-content">
-                    <div class="info-row">
-                        <span class="info-label">Ventas Pagadas:</span>
-                        <span class="info-value">
-                            {{ $sales->where('status', 'pagado')->count() }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Ventas Pendientes:</span>
-                        <span class="info-value">
-                            {{ $sales->where('status', 'pendiente')->count() }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Ventas Anuladas:</span>
-                        <span class="info-value">
-                            {{ $sales->where('status', 'anulado')->count() }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col">
-            <div class="info-box">
-                <div class="info-box-header">Formas de Pago</div>
-                <div class="info-box-content">
-                    <div class="info-row">
-                        <span class="info-label">Contado:</span>
-                        <span class="info-value">
-                            {{ $sales->where('payment_type', 'contado')->count() }}
-                        </span>
-                    </div>
-                    <div class="info-row">
-                        <span class="info-label">Crédito:</span>
-                        <span class="info-value">
-                            {{ $sales->where('payment_type', 'credito')->count() }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 @endif
 
