@@ -117,16 +117,17 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
             // Incrementar cantidad
             const newDetails = [...details];
             newDetails[existingIndex].quantity += 1;
-            newDetails[existingIndex].subtotal = newDetails[existingIndex].quantity * newDetails[existingIndex].unit_price;
+            newDetails[existingIndex].subtotal = newDetails[existingIndex].quantity * (parseFloat(String(newDetails[existingIndex].unit_price)) || 0);
             setDetails(newDetails);
         } else {
             // Agregar nuevo
+            const price = parseFloat(String(product.sale_price)) || 0;
             setDetails([...details, {
                 product_id: product.id,
                 product: product,
                 quantity: 1,
-                unit_price: product.sale_price,
-                subtotal: product.sale_price,
+                unit_price: price,
+                subtotal: price,
             }]);
         }
 

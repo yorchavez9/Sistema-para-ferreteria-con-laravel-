@@ -280,6 +280,38 @@
             padding: 8px 10px;
         }
 
+        /* ── Watermark ── */
+        .watermark {
+            position: fixed;
+            top: 30%;
+            left: 50%;
+            margin-left: -150px;
+            width: 300px;
+            text-align: center;
+            z-index: -1;
+            opacity: 0.04;
+        }
+
+        .watermark img {
+            width: 280px;
+            height: auto;
+        }
+
+        .watermark-text {
+            position: fixed;
+            top: 55%;
+            left: 50%;
+            margin-left: -200px;
+            width: 400px;
+            text-align: center;
+            z-index: -1;
+            font-size: 38px;
+            font-weight: bold;
+            color: #000;
+            opacity: 0.04;
+            letter-spacing: 8px;
+        }
+
         /* ── Footer ── */
         .footer-bar {
             margin-top: 18px;
@@ -293,6 +325,14 @@
     </style>
 </head>
 <body>
+    <!-- ── Watermark ── -->
+    @if($settings->company_logo)
+    <div class="watermark">
+        <img src="{{ public_path('storage/' . $settings->company_logo) }}" alt="">
+    </div>
+    @endif
+    <div class="watermark-text">COTIZACION</div>
+
     <div class="page-frame">
 
         <!-- ── Header ── -->

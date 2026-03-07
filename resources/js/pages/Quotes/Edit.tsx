@@ -102,13 +102,17 @@ export default function QuoteEdit({ quote, customers, branches, products }: Quot
     });
 
     const [details, setDetails] = useState<QuoteDetail[]>(
-        quote.details.map(d => ({
-            product_id: d.product_id,
-            product: d.product,
-            quantity: d.quantity,
-            unit_price: d.unit_price,
-            subtotal: d.quantity * d.unit_price,
-        }))
+        quote.details.map(d => {
+            const qty = parseFloat(String(d.quantity)) || 0;
+            const price = parseFloat(String(d.unit_price)) || 0;
+            return {
+                product_id: d.product_id,
+                product: d.product,
+                quantity: qty,
+                unit_price: price,
+                subtotal: qty * price,
+            };
+        })
     );
     const [selectedProduct, setSelectedProduct] = useState<string>('');
     const [productSearch, setProductSearch] = useState('');
@@ -142,16 +146,17 @@ export default function QuoteEdit({ quote, customers, branches, products }: Quot
             // Incrementar cantidad
             const newDetails = [...details];
             newDetails[existingIndex].quantity += 1;
-            newDetails[existingIndex].subtotal = newDetails[existingIndex].quantity * newDetails[existingIndex].unit_price;
+            newDetails[existingIndex].subtotal = newDetails[existingIndex].quantity * (parseFloat(String(newDetails[existingIndex].unit_price)) || 0);
             setDetails(newDetails);
         } else {
             // Agregar nuevo
+            const price = parseFloat(String(product.sale_price)) || 0;
             setDetails([...details, {
                 product_id: product.id,
                 product: product,
                 quantity: 1,
-                unit_price: product.sale_price,
-                subtotal: product.sale_price,
+                unit_price: price,
+                subtotal: price,
             }]);
         }
 
