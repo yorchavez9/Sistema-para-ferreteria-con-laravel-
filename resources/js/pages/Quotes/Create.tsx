@@ -25,7 +25,6 @@ import {
     Plus,
     Trash2,
     Search,
-    Calculator,
     Save
 } from 'lucide-react';
 import { type BreadcrumbItem } from '@/types';
@@ -58,6 +57,7 @@ interface QuoteDetail {
     product?: Product;
     quantity: number;
     unit_price: number;
+    discount: number;
     subtotal: number;
 }
 
@@ -105,28 +105,31 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
         }
     }, [productSearch, products]);
 
+    const recalcSubtotal = (qty: number, price: number, disc: number) => {
+        return (qty * price) - disc;
+    };
+
     const addProduct = () => {
         if (!selectedProduct) return;
 
         const product = products.find(p => p.id.toString() === selectedProduct);
         if (!product) return;
 
-        // Verificar si ya está en la lista
         const existingIndex = details.findIndex(d => d.product_id === product.id);
         if (existingIndex >= 0) {
-            // Incrementar cantidad
             const newDetails = [...details];
-            newDetails[existingIndex].quantity += 1;
-            newDetails[existingIndex].subtotal = newDetails[existingIndex].quantity * (parseFloat(String(newDetails[existingIndex].unit_price)) || 0);
+            const d = newDetails[existingIndex];
+            d.quantity += 1;
+            d.subtotal = recalcSubtotal(d.quantity, d.unit_price, d.discount);
             setDetails(newDetails);
         } else {
-            // Agregar nuevo
             const price = parseFloat(String(product.sale_price)) || 0;
             setDetails([...details, {
                 product_id: product.id,
                 product: product,
                 quantity: 1,
                 unit_price: price,
+                discount: 0,
                 subtotal: price,
             }]);
         }
@@ -142,21 +145,36 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
     const updateQuantity = (index: number, quantity: number) => {
         if (quantity < 1) return;
         const newDetails = [...details];
-        newDetails[index].quantity = quantity;
-        newDetails[index].subtotal = quantity * newDetails[index].unit_price;
+        const d = newDetails[index];
+        d.quantity = quantity;
+        d.subtotal = recalcSubtotal(d.quantity, d.unit_price, d.discount);
         setDetails(newDetails);
     };
 
     const updatePrice = (index: number, price: number) => {
         if (price < 0) return;
         const newDetails = [...details];
-        newDetails[index].unit_price = price;
-        newDetails[index].subtotal = newDetails[index].quantity * price;
+        const d = newDetails[index];
+        d.unit_price = price;
+        d.subtotal = recalcSubtotal(d.quantity, d.unit_price, d.discount);
+        setDetails(newDetails);
+    };
+
+    const updateItemDiscount = (index: number, discount: number) => {
+        if (discount < 0) return;
+        const newDetails = [...details];
+        const d = newDetails[index];
+        d.discount = discount;
+        d.subtotal = recalcSubtotal(d.quantity, d.unit_price, d.discount);
         setDetails(newDetails);
     };
 
     const calculateSubtotal = () => {
-        return details.reduce((sum, detail) => sum + detail.subtotal, 0);
+        return details.reduce((sum, d) => sum + d.subtotal, 0);
+    };
+
+    const calculateTotalDiscounts = () => {
+        return details.reduce((sum, d) => sum + d.discount, 0) + formData.discount;
     };
 
     const calculateTotal = () => {
@@ -184,6 +202,7 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
                 product_id: d.product_id,
                 quantity: d.quantity,
                 unit_price: d.unit_price,
+                discount: d.discount,
             })),
         }, {
             onError: (errors) => {
@@ -305,7 +324,7 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
                                     <SelectContent>
                                         {filteredProducts.map((product) => (
                                             <SelectItem key={product.id} value={product.id.toString()}>
-                                                {product.code} - {product.name} ({formatCurrency(product.sale_price)})
+                                                {product.code} - {product.name} ({formatCurrency(parseFloat(String(product.sale_price)) || 0)})
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
@@ -326,10 +345,11 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Producto</TableHead>
-                                            <TableHead className="w-32">Cantidad</TableHead>
-                                            <TableHead className="w-40">Precio Unit.</TableHead>
-                                            <TableHead className="w-40">Subtotal</TableHead>
-                                            <TableHead className="w-20"></TableHead>
+                                            <TableHead className="w-28">Cantidad</TableHead>
+                                            <TableHead className="w-32">Precio Unit.</TableHead>
+                                            <TableHead className="w-32">Dcto. Item</TableHead>
+                                            <TableHead className="w-36">Subtotal</TableHead>
+                                            <TableHead className="w-16"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -349,7 +369,7 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
                                                             type="number"
                                                             min="1"
                                                             value={detail.quantity}
-                                                            onChange={(e) => updateQuantity(index, parseInt(e.target.value))}
+                                                            onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
                                                             className="w-full"
                                                         />
                                                     </TableCell>
@@ -359,8 +379,19 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
                                                             min="0"
                                                             step="0.01"
                                                             value={detail.unit_price}
-                                                            onChange={(e) => updatePrice(index, parseFloat(e.target.value))}
+                                                            onChange={(e) => updatePrice(index, parseFloat(e.target.value) || 0)}
                                                             className="w-full"
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Input
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.01"
+                                                            value={detail.discount}
+                                                            onChange={(e) => updateItemDiscount(index, parseFloat(e.target.value) || 0)}
+                                                            className="w-full"
+                                                            placeholder="0.00"
                                                         />
                                                     </TableCell>
                                                     <TableCell className="font-medium">
@@ -380,7 +411,7 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
                                             ))
                                         ) : (
                                             <TableRow>
-                                                <TableCell colSpan={5} className="text-center py-6 text-muted-foreground">
+                                                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
                                                     No hay productos agregados
                                                 </TableCell>
                                             </TableRow>
@@ -399,12 +430,26 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
                         <CardContent>
                             <div className="space-y-4">
                                 <div className="flex justify-between items-center">
+                                    <span className="text-sm font-medium">Subtotal (sin descuentos):</span>
+                                    <span className="text-lg font-semibold">
+                                        {formatCurrency(details.reduce((sum, d) => sum + (d.quantity * d.unit_price), 0))}
+                                    </span>
+                                </div>
+
+                                {details.some(d => d.discount > 0) && (
+                                    <div className="flex justify-between items-center text-muted-foreground">
+                                        <span className="text-sm">Descuentos por item:</span>
+                                        <span className="text-sm">- {formatCurrency(details.reduce((sum, d) => sum + d.discount, 0))}</span>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between items-center">
                                     <span className="text-sm font-medium">Subtotal:</span>
                                     <span className="text-lg font-semibold">{formatCurrency(calculateSubtotal())}</span>
                                 </div>
 
                                 <div className="flex justify-between items-center gap-4">
-                                    <Label htmlFor="discount">Descuento:</Label>
+                                    <Label htmlFor="discount">Descuento global:</Label>
                                     <div className="flex items-center gap-2">
                                         <Input
                                             type="number"
@@ -415,7 +460,7 @@ export default function QuoteCreate({ defaultBranchId, customers, branches, prod
                                             onChange={(e) => setFormData({ ...formData, discount: parseFloat(e.target.value) || 0 })}
                                             className="w-32"
                                         />
-                                        <span className="text-lg font-semibold">{formatCurrency(formData.discount)}</span>
+                                        <span className="text-lg font-semibold">- {formatCurrency(formData.discount)}</span>
                                     </div>
                                 </div>
 

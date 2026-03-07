@@ -289,7 +289,7 @@
             width: 300px;
             text-align: center;
             z-index: -1;
-            opacity: 0.04;
+            opacity: 0.18;
         }
 
         .watermark img {
@@ -308,7 +308,7 @@
             font-size: 38px;
             font-weight: bold;
             color: #000;
-            opacity: 0.04;
+            opacity: 0.18;
             letter-spacing: 8px;
         }
 
@@ -435,15 +435,21 @@
         </table>
 
         <!-- ── Products ── -->
+        @php
+            $hasItemDiscounts = $quote->details->sum('discount') > 0;
+        @endphp
         <table class="items-table">
             <thead>
                 <tr>
-                    <th style="width: 5%;" class="text-center">#</th>
-                    <th style="width: 9%;" class="text-center">IMAGEN</th>
-                    <th style="width: 11%;">CODIGO</th>
-                    <th style="width: 40%;">DESCRIPCION</th>
-                    <th style="width: 7%;" class="text-center">CANT.</th>
-                    <th style="width: 14%;" class="text-right">P. UNIT.</th>
+                    <th style="width: 4%;" class="text-center">#</th>
+                    <th style="width: 8%;" class="text-center">IMAGEN</th>
+                    <th style="width: 10%;">CODIGO</th>
+                    <th style="width: {{ $hasItemDiscounts ? '30%' : '38%' }};">DESCRIPCION</th>
+                    <th style="width: 6%;" class="text-center">CANT.</th>
+                    <th style="width: 12%;" class="text-right">P. UNIT.</th>
+                    @if($hasItemDiscounts)
+                    <th style="width: 10%;" class="text-right">DCTO.</th>
+                    @endif
                     <th style="width: 14%;" class="text-right">SUBTOTAL</th>
                 </tr>
             </thead>
@@ -464,13 +470,22 @@
                     <td><span class="prod-name">{{ $detail->product->name }}</span></td>
                     <td class="text-center" style="font-weight: bold;">{{ $detail->quantity }}</td>
                     <td class="text-right">{{ $settings->currency_symbol ?? 'S/' }} {{ number_format($detail->unit_price, 2) }}</td>
+                    @if($hasItemDiscounts)
+                    <td class="text-right">
+                        @if($detail->discount > 0)
+                            - {{ $settings->currency_symbol ?? 'S/' }} {{ number_format($detail->discount, 2) }}
+                        @else
+                            -
+                        @endif
+                    </td>
+                    @endif
                     <td class="text-right" style="font-weight: bold;">{{ $settings->currency_symbol ?? 'S/' }} {{ number_format($detail->subtotal, 2) }}</td>
                 </tr>
                 @endforeach
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="5"></td>
+                    <td colspan="{{ $hasItemDiscounts ? 6 : 5 }}"></td>
                     <td class="text-right">TOTAL:</td>
                     <td class="text-right">{{ $settings->currency_symbol ?? 'S/' }} {{ number_format($quote->details->sum('subtotal'), 2) }}</td>
                 </tr>
@@ -489,26 +504,36 @@
                     @endif
                 </td>
                 <td style="width: 50%;">
+                    @php
+                        $totalItemDiscounts = $quote->details->sum('discount');
+                        $cs = $settings->currency_symbol ?? 'S/';
+                    @endphp
                     <table class="summary-tbl">
                         <tr>
                             <td class="lbl">Subtotal:</td>
-                            <td class="val">{{ $settings->currency_symbol ?? 'S/' }} {{ number_format($quote->subtotal, 2) }}</td>
+                            <td class="val">{{ $cs }} {{ number_format($quote->subtotal, 2) }}</td>
                         </tr>
-                        @if($quote->tax > 0)
+                        @if($totalItemDiscounts > 0)
                         <tr>
-                            <td class="lbl">IGV ({{ $settings->igv_percentage ?? 18 }}%):</td>
-                            <td class="val">{{ $settings->currency_symbol ?? 'S/' }} {{ number_format($quote->tax, 2) }}</td>
+                            <td class="lbl">Dcto. por items:</td>
+                            <td class="val">- {{ $cs }} {{ number_format($totalItemDiscounts, 2) }}</td>
                         </tr>
                         @endif
                         @if($quote->discount > 0)
                         <tr>
-                            <td class="lbl">Descuento:</td>
-                            <td class="val">- {{ $settings->currency_symbol ?? 'S/' }} {{ number_format($quote->discount, 2) }}</td>
+                            <td class="lbl">Dcto. global:</td>
+                            <td class="val">- {{ $cs }} {{ number_format($quote->discount, 2) }}</td>
+                        </tr>
+                        @endif
+                        @if($quote->tax > 0)
+                        <tr>
+                            <td class="lbl">IGV ({{ $settings->igv_percentage ?? 18 }}%):</td>
+                            <td class="val">{{ $cs }} {{ number_format($quote->tax, 2) }}</td>
                         </tr>
                         @endif
                         <tr class="grand">
                             <td>TOTAL:</td>
-                            <td style="text-align: right;">{{ $settings->currency_symbol ?? 'S/' }} {{ number_format($quote->total, 2) }}</td>
+                            <td style="text-align: right;">{{ $cs }} {{ number_format($quote->total, 2) }}</td>
                         </tr>
                     </table>
                 </td>

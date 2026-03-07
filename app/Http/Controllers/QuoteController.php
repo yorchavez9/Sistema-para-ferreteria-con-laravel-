@@ -134,6 +134,7 @@ class QuoteController extends Controller
             'details.*.product_id' => 'required|exists:products,id',
             'details.*.quantity' => 'required|integer|min:1',
             'details.*.unit_price' => 'required|numeric|min:0',
+            'details.*.discount' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -159,11 +160,13 @@ class QuoteController extends Controller
             ]);
 
             foreach ($validated['details'] as $detail) {
+                $itemDiscount = $detail['discount'] ?? 0;
                 $quote->details()->create([
                     'product_id' => $detail['product_id'],
                     'quantity' => $detail['quantity'],
                     'unit_price' => $detail['unit_price'],
-                    'subtotal' => $detail['quantity'] * $detail['unit_price'],
+                    'discount' => $itemDiscount,
+                    'subtotal' => ($detail['quantity'] * $detail['unit_price']) - $itemDiscount,
                 ]);
             }
 
@@ -240,6 +243,7 @@ class QuoteController extends Controller
             'details.*.product_id' => 'required|exists:products,id',
             'details.*.quantity' => 'required|integer|min:1',
             'details.*.unit_price' => 'required|numeric|min:0',
+            'details.*.discount' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -258,11 +262,13 @@ class QuoteController extends Controller
 
             // Crear nuevos detalles
             foreach ($validated['details'] as $detail) {
+                $itemDiscount = $detail['discount'] ?? 0;
                 $quote->details()->create([
                     'product_id' => $detail['product_id'],
                     'quantity' => $detail['quantity'],
                     'unit_price' => $detail['unit_price'],
-                    'subtotal' => $detail['quantity'] * $detail['unit_price'],
+                    'discount' => $itemDiscount,
+                    'subtotal' => ($detail['quantity'] * $detail['unit_price']) - $itemDiscount,
                 ]);
             }
 
