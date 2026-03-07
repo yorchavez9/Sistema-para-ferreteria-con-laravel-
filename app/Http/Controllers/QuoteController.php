@@ -138,8 +138,8 @@ class QuoteController extends Controller
 
         DB::beginTransaction();
         try {
-            // Generar número de cotización
-            $lastQuote = Quote::where('branch_id', $validated['branch_id'])
+            // Generar número de cotización (global, incluyendo eliminados)
+            $lastQuote = Quote::withTrashed()
                 ->orderBy('id', 'desc')
                 ->first();
 
@@ -295,7 +295,7 @@ class QuoteController extends Controller
         DB::beginTransaction();
         try {
             // Generar nuevo número de cotización
-            $lastQuote = Quote::where('branch_id', $quote->branch_id)
+            $lastQuote = Quote::withTrashed()
                 ->orderBy('id', 'desc')
                 ->first();
 
