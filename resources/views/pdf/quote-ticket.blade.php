@@ -274,7 +274,7 @@
 
         <!-- Validity -->
         <div class="validity-badge">
-            VALIDA HASTA: {{ \Carbon\Carbon::parse($quote->valid_until)->format($settings->date_format ?? 'd/m/Y') }}
+            VALIDA HASTA: {{ \Carbon\Carbon::parse($quote->expiration_date)->format($settings->date_format ?? 'd/m/Y') }}
         </div>
 
         <!-- Customer Info -->
